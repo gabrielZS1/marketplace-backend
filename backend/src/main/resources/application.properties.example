@@ -1,0 +1,16 @@
+spring.application.name=backend
+
+spring.datasource.url=jdbc:postgresql://localhost:5433/marketplace
+spring.datasource.username=marketplace_admin
+spring.datasource.password=COLOQUE_SUA_SENHA_AQUI
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=true
+
+spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration
+
+server.port=8082
+
+app.jwt.secret=COLOQUE_SUA_CHAVE_SECRETA_AQUI

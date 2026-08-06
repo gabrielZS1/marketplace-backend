@@ -6,7 +6,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public class AppointmentRequestDTO {
-    @NotNull private UUID employeeId;
+    private UUID employeeId;
     @NotNull private UUID serviceId;
     @NotNull private OffsetDateTime startsAt;
     private Boolean isHomeService = false;

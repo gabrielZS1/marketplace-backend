@@ -71,6 +71,15 @@ public class ReviewController {
     }
 
     private ReviewResponseDTO toResponseDTO(Review r) {
-        return new ReviewResponseDTO(r.getId(), r.getClient().getName(), r.getRating(), r.getComment(), r.getCreatedAt());
+        return new ReviewResponseDTO(
+                r.getId(),
+                r.getClient().getName(),
+                r.getRating(),
+                r.getComment(),
+                r.getCreatedAt(),
+                r.getEmployee() != null ? String.valueOf(r.getEmployee().getUser()) : null,
+                r.getAppointment().getService() != null
+                        ? r.getAppointment().getService().getName() : null
+        );
     }
 }

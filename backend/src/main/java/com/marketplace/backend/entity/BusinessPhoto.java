@@ -1,5 +1,6 @@
 package com.marketplace.backend.entity;
 
+import com.marketplace.backend.enums.PhotoCategory;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -22,6 +23,10 @@ public class BusinessPhoto {
     @Column(nullable = false)
     private Integer position = 0;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private PhotoCategory category = PhotoCategory.PORTFOLIO;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -37,5 +42,7 @@ public class BusinessPhoto {
     public void setUrl(String url) { this.url = url; }
     public Integer getPosition() { return position; }
     public void setPosition(Integer position) { this.position = position; }
+    public PhotoCategory getCategory() { return category; }
+    public void setCategory(PhotoCategory category) { this.category = category; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
 }

@@ -12,7 +12,7 @@ public class EmployeeResponseDTO {
 
     public EmployeeResponseDTO(UUID id, String name, String bio, String specialty, Boolean active, Double rating) {
         this.id = id; this.name = name; this.bio = bio; this.specialty = specialty;
-        this.active = active; this.rating = this.rating;
+        this.active = active; this.rating = rating;
     }
 
     public UUID getId() { return id; }

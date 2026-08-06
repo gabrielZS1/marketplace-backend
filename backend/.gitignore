@@ -30,3 +30,7 @@ build/
 
 ### Configuração sensível ###
 application.properties
+
+### Variáveis de ambiente ###
+.env
+.env.local

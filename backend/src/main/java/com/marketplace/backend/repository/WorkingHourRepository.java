@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface WorkingHourRepository extends JpaRepository<WorkingHour, UUID> {
     List<WorkingHour> findByEmployeeId(UUID employeeId);
     List<WorkingHour> findByEmployeeBusinessId(UUID businessId);
+    List<WorkingHour> findByBusinessId(UUID businessId);
+    void deleteByBusinessId(UUID businessId);
 }

@@ -11,15 +11,23 @@ import java.util.UUID;
 
 public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
-    List<Review> findByBusinessIdOrderByCreatedAtDesc(UUID businessId);
-
     Optional<Review> findByAppointmentId(UUID appointmentId);
 
-    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.business.id = :businessId")
-    Double findAverageRatingByBusinessId(@Param("businessId") UUID businessId);
+    // ← JOIN FETCH garante que appointment e service são carregados junto
+    @Query("""
+        SELECT r FROM Review r
+        JOIN FETCH r.appointment a
+        JOIN FETCH a.service
+        JOIN FETCH r.employee
+        JOIN FETCH r.client
+        WHERE r.business.id = :businessId
+        ORDER BY r.createdAt DESC
+    """)
+    List<Review> findByBusinessIdOrderByCreatedAtDesc(@Param("businessId") UUID businessId);
 
-    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.employee.id = :employeeId")
-    Double findAverageRatingByEmployeeId(@Param("employeeId") UUID employeeId);
+    Double findAverageRatingByBusinessId(UUID id);
 
-    long countByBusinessId(UUID businessId);
+    long countByBusinessId(UUID id);
+
+    Double findAverageRatingByEmployeeId(UUID id);
 }

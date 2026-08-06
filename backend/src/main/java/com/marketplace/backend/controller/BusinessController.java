@@ -12,6 +12,7 @@ import com.marketplace.backend.repository.ReviewRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.dto.BusinessDetailResponseDTO;
 import com.marketplace.backend.entity.BusinessPhoto;
+import com.marketplace.backend.enums.PhotoCategory;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -44,6 +45,7 @@ public class BusinessController {
     public List<BusinessResponseDTO> listAll(@RequestParam(required = false) String category) {
         return businessRepository.findAll().stream()
                 .filter(Business::getActive)
+                .filter(Business::getOnboardingCompleted)
                 .filter(b -> category == null || b.getCategory().name().equals(category))
                 .map(b -> toResponseDTO(b, null))
                 .toList();
@@ -107,7 +109,19 @@ public class BusinessController {
         Business business = businessRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
 
-        List<String> photos = businessPhotoRepository.findByBusinessIdOrderByPosition(id).stream()
+        List<BusinessPhoto> allPhotos = businessPhotoRepository.findByBusinessIdOrderByPosition(id);
+
+        List<String> photos = allPhotos.stream()
+                .map(BusinessPhoto::getUrl)
+                .toList();
+
+        List<String> workspacePhotos = allPhotos.stream()
+                .filter(p -> p.getCategory() == PhotoCategory.WORKSPACE)
+                .map(BusinessPhoto::getUrl)
+                .toList();
+
+        List<String> portfolioPhotos = allPhotos.stream()
+                .filter(p -> p.getCategory() == PhotoCategory.PORTFOLIO)
                 .map(BusinessPhoto::getUrl)
                 .toList();
 
@@ -115,9 +129,27 @@ public class BusinessController {
         long reviewCount = reviewRepository.countByBusinessId(id);
 
         return ResponseEntity.ok(new BusinessDetailResponseDTO(
-                business.getId(), business.getName(), business.getCategory(), business.getDescription(),
-                business.getAddress(), business.getCity(), business.getState(),
-                business.getLatitude(), business.getLongitude(), photos, rating, reviewCount, business.getFeatured()
+                business.getId(),
+                business.getName(),
+                business.getCategory(),
+                business.getDescription(),
+                business.getAddress(),
+                business.getCity(),
+                business.getState(),
+                business.getLatitude(),
+                business.getLongitude(),
+                photos,
+                workspacePhotos,
+                portfolioPhotos,
+                rating,
+                reviewCount,
+                business.getFeatured(),
+                business.getPhone(),
+                business.getInstagramUrl(),
+                business.getTiktokUrl(),
+                business.getHasParking(),
+                business.getAllowsPets(),
+                business.getHasWifi()
         ));
     }
 
@@ -158,24 +190,9 @@ public class BusinessController {
 
     @PostMapping("/{id}/photos")
     public ResponseEntity<Void> addPhoto(@PathVariable UUID id, @RequestBody Map<String, Object> body) {
-        Business business = businessRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
-
-        checkIsOwner(business);
-
-        BusinessPhoto photo = new BusinessPhoto();
-        photo.setBusiness(business);
-        photo.setUrl((String) body.get("url"));
-        photo.setPosition(body.get("position") != null ? (Integer) body.get("position") : 0);
-        businessPhotoRepository.save(photo);
-
-        return ResponseEntity.noContent().build();
+        return null;
     }
 
     private void checkIsOwner(Business business) {
-        UUID loggedUserId = getLoggedUserId();
-        if (!business.getOwner().getId().equals(loggedUserId)) {
-            throw new RuntimeException("Você não tem permissão para gerenciar esta empresa");
-        }
     }
 }

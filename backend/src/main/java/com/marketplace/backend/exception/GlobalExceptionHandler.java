@@ -23,8 +23,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponseDTO(message));
     }
 
+    @ExceptionHandler(PlanLimitExceededException.class)
+    public ResponseEntity<ErrorResponseDTO> handlePlanLimitExceeded(PlanLimitExceededException ex) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(new ErrorResponseDTO(ex.getMessage()));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponseDTO> handleRuntimeException(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponseDTO(ex.getMessage()));
     }
+
+
 }

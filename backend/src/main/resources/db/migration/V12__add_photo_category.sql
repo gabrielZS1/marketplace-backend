@@ -1,0 +1,2 @@
+ALTER TABLE business_photos
+    ADD COLUMN category VARCHAR(20) NOT NULL DEFAULT 'PORTFOLIO';

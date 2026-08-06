@@ -36,8 +36,31 @@ public class AppointmentController {
         User client = userRepository.findById(clientId)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        Employee employee = employeeRepository.findById(request.getEmployeeId())
-                .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
+        Employee employee;
+
+        if (request.getEmployeeId() != null) {
+
+            employee = employeeRepository.findById(request.getEmployeeId())
+                    .orElseThrow(() -> new RuntimeException("Profissional não encontrado"));
+
+        } else {
+
+            Service service = serviceRepository.findById(request.getServiceId())
+                    .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
+
+            Business business = service.getBusiness();
+
+            List<Employee> employees =
+                    employeeRepository.findByBusinessIdAndActiveTrue(
+                            business.getId()
+                    );
+
+            if (employees.isEmpty()) {
+                throw new RuntimeException("Nenhum profissional disponível");
+            }
+
+            employee = employees.get(0);
+        }
 
         com.marketplace.backend.entity.Service service = serviceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
@@ -68,9 +91,13 @@ public class AppointmentController {
 
     @GetMapping("/me")
     public List<AppointmentResponseDTO> listMyAppointments() {
+
         UUID clientId = getLoggedUserId();
-        return appointmentRepository.findAll().stream()
-                .filter(a -> a.getClient().getId().equals(clientId))
+
+        System.out.println("Usuário logado: " + clientId);
+
+        return appointmentRepository.findByClientId(clientId)
+                .stream()
                 .map(this::toResponseDTO)
                 .toList();
     }

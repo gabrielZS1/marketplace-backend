@@ -21,13 +21,26 @@ public class SubscriptionGraceCheckJob {
     // Roda todo dia às 3h da manhã
     @Scheduled(cron = "0 0 3 * * *")
     public void checkOverdueSubscriptions() {
-        List<Business> pastDue = businessRepository.findBySubscriptionStatus(SubscriptionStatus.PAST_DUE);
-
         OffsetDateTime now = OffsetDateTime.now();
 
+        // Caso 1: pagamento atrasado (PAST_DUE) que passou do período de tolerância
+        List<Business> pastDue = businessRepository.findBySubscriptionStatus(SubscriptionStatus.PAST_DUE);
         for (Business business : pastDue) {
             if (business.getSubscriptionGraceEndsAt() != null
                     && business.getSubscriptionGraceEndsAt().isBefore(now)) {
+                business.setSubscriptionStatus(SubscriptionStatus.SUSPENDED);
+                business.setActive(false);
+                businessRepository.save(business);
+            }
+        }
+
+        // Caso 2: trial de 7 dias (sem assinatura no Mercado Pago) que venceu
+        List<Business> onTrial = businessRepository.findBySubscriptionStatus(SubscriptionStatus.TRIAL);
+        for (Business business : onTrial) {
+            boolean neverSubscribed = business.getMpPreapprovalId() == null;
+            boolean trialExpired = business.getTrialEndsAt() != null && business.getTrialEndsAt().isBefore(now);
+
+            if (neverSubscribed && trialExpired) {
                 business.setSubscriptionStatus(SubscriptionStatus.SUSPENDED);
                 business.setActive(false);
                 businessRepository.save(business);

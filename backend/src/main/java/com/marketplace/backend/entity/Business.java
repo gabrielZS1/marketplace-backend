@@ -23,6 +23,10 @@ public class Business {
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
+    // na entidade Business
+    @Column(name = "expo_push_token")
+    private String expoPushToken;
+
     @Column(length = 150)
     private String name;
 
@@ -185,4 +189,6 @@ public class Business {
     public void setSubscriptionGraceEndsAt(OffsetDateTime subscriptionGraceEndsAt) { this.subscriptionGraceEndsAt = subscriptionGraceEndsAt; }
     public String getMpPreapprovalId() { return mpPreapprovalId; }
     public void setMpPreapprovalId(String mpPreapprovalId) { this.mpPreapprovalId = mpPreapprovalId; }
+    public String getExpoPushToken() { return expoPushToken; }
+    public void setExpoPushToken(String expoPushToken) { this.expoPushToken = expoPushToken; }
 }

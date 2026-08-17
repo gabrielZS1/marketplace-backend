@@ -1,0 +1,1 @@
+ALTER TABLE businesses ADD COLUMN expo_push_token VARCHAR(255);

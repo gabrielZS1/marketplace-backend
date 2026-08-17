@@ -29,8 +29,12 @@ public class AvailabilityController {
     private final AppointmentRepository appointmentRepository;
     private final ServiceRepository serviceRepository;
 
-    public AvailabilityController(EmployeeRepository employeeRepository, WorkingHourRepository workingHourRepository,
-                                  AppointmentRepository appointmentRepository, ServiceRepository serviceRepository) {
+    public AvailabilityController(
+            EmployeeRepository employeeRepository,
+            WorkingHourRepository workingHourRepository,
+            AppointmentRepository appointmentRepository,
+            ServiceRepository serviceRepository
+    ) {
         this.employeeRepository = employeeRepository;
         this.workingHourRepository = workingHourRepository;
         this.appointmentRepository = appointmentRepository;
@@ -42,77 +46,313 @@ public class AvailabilityController {
             @PathVariable UUID businessId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam UUID serviceId,
-            @RequestParam(required = false) UUID employeeId) {
+            @RequestParam(required = false) UUID employeeId
+    ) {
 
-        com.marketplace.backend.entity.Service service = serviceRepository.findById(serviceId)
-                .orElseThrow(() -> new RuntimeException("Serviço não encontrado"));
+        // =========================================================
+        // SERVIÇO
+        // =========================================================
+
+        com.marketplace.backend.entity.Service service =
+                serviceRepository.findById(serviceId)
+                        .orElseThrow(() ->
+                                new RuntimeException("Serviço não encontrado"));
+
         int duration = service.getDurationMinutes();
 
-        List<Employee> employees = employeeRepository.findAll().stream()
-                .filter(e -> e.getBusiness().getId().equals(businessId) && e.getActive())
-                .filter(e -> employeeId == null || e.getId().equals(employeeId))
+        // =========================================================
+        // FUNCIONÁRIOS ATIVOS DO ESTABELECIMENTO
+        // =========================================================
+
+        List<Employee> employees = employeeRepository.findAll()
+                .stream()
+                .filter(e ->
+                        e.getBusiness() != null
+                                && e.getBusiness().getId().equals(businessId)
+                )
+                .filter(e -> Boolean.TRUE.equals(e.getActive()))
+                .filter(e ->
+                        employeeId == null
+                                || e.getId().equals(employeeId)
+                )
                 .toList();
 
-        int dayOfWeek = date.getDayOfWeek().getValue() % 7; // Java: Monday=1..Sunday=7 -> converte para Domingo=0
-
-        Map<Employee, WorkingHour> workingEmployees = new LinkedHashMap<>();
-        for (Employee e : employees) {
-            workingHourRepository.findByEmployeeId(e.getId()).stream()
-                    .filter(wh -> wh.getDayOfWeek() == dayOfWeek)
-                    .findFirst()
-                    .ifPresent(wh -> workingEmployees.put(e, wh));
-        }
-
-        if (workingEmployees.isEmpty()) {
+        if (employees.isEmpty()) {
             return List.of();
         }
 
-        SortedSet<LocalTime> candidateTimes = new TreeSet<>();
-        for (WorkingHour wh : workingEmployees.values()) {
-            LocalTime t = wh.getStartTime();
-            while (!t.plusMinutes(duration).isAfter(wh.getEndTime())) {
-                candidateTimes.add(t);
-                t = t.plusMinutes(SLOT_STEP_MINUTES);
+        System.out.println("### employeeId recebido: " + employeeId);
+        System.out.println("### employees após filtro: " + employees.stream().map(Employee::getId).toList());
+
+        // =========================================================
+        // DIA DA SEMANA
+        //
+        // Sistema:
+        // Domingo = 0
+        // Segunda = 1
+        // ...
+        // Sábado = 6
+        // =========================================================
+
+        int dayOfWeek = date.getDayOfWeek().getValue() % 7;
+
+        // =========================================================
+        // HORÁRIOS DO ESTABELECIMENTO
+        //
+        // Aqui entram os horários que possuem:
+        //
+        // employeeId = null
+        //
+        // Exemplo:
+        // 09:00 - 18:00
+        // 10:00 - 19:00
+        // =========================================================
+
+        List<WorkingHour> businessHours =
+                workingHourRepository.findByBusinessId(businessId)
+                        .stream()
+                        .filter(wh ->
+                                wh.getDayOfWeek() != null
+                                        && wh.getDayOfWeek() == dayOfWeek
+                        )
+                        .toList();
+
+        // =========================================================
+        // MAPA DE HORÁRIOS POR FUNCIONÁRIO
+        // =========================================================
+
+        Map<Employee, List<WorkingHour>> employeeWorkingHours =
+                new LinkedHashMap<>();
+
+        for (Employee employee : employees) {
+
+            // ---------------------------------------------
+            // Horários específicos do funcionário
+            // ---------------------------------------------
+
+            List<WorkingHour> specificHours =
+                    workingHourRepository.findByEmployeeId(employee.getId())
+                            .stream()
+                            .filter(wh ->
+                                    wh.getDayOfWeek() != null
+                                            && wh.getDayOfWeek() == dayOfWeek
+                            )
+                            .toList();
+
+            // ---------------------------------------------
+            // Se possuir horários próprios, usa eles.
+            // ---------------------------------------------
+
+            if (!specificHours.isEmpty()) {
+
+                employeeWorkingHours.put(
+                        employee,
+                        specificHours
+                );
+
+            } else {
+
+                // ---------------------------------------------
+                // Caso contrário usa os horários gerais
+                // do estabelecimento.
+                // ---------------------------------------------
+
+                employeeWorkingHours.put(
+                        employee,
+                        businessHours
+                );
             }
         }
 
-        OffsetDateTime now = OffsetDateTime.now(OFFSET);
+        // =========================================================
+        // SE NÃO EXISTE HORÁRIO
+        // =========================================================
 
-        List<TimeSlotDTO> result = new ArrayList<>();
+        boolean hasAnyWorkingHour =
+                employeeWorkingHours.values()
+                        .stream()
+                        .anyMatch(list -> !list.isEmpty());
+
+        if (!hasAnyWorkingHour) {
+            return List.of();
+        }
+
+        // =========================================================
+        // GERAR TODOS OS HORÁRIOS POSSÍVEIS
+        // =========================================================
+
+        SortedSet<LocalTime> candidateTimes =
+                new TreeSet<>();
+
+        for (List<WorkingHour> hours :
+                employeeWorkingHours.values()) {
+
+            for (WorkingHour wh : hours) {
+
+                LocalTime time = wh.getStartTime();
+
+                while (!time.plusMinutes(duration)
+                        .isAfter(wh.getEndTime())) {
+
+                    candidateTimes.add(time);
+
+                    time = time.plusMinutes(
+                            SLOT_STEP_MINUTES
+                    );
+                }
+            }
+        }
+
+        // =========================================================
+        // HORÁRIO ATUAL
+        // =========================================================
+
+        OffsetDateTime now =
+                OffsetDateTime.now(OFFSET);
+
+        // =========================================================
+        // RESULTADO
+        // =========================================================
+
+        List<TimeSlotDTO> result =
+                new ArrayList<>();
+
         for (LocalTime time : candidateTimes) {
-            OffsetDateTime slotStart = OffsetDateTime.of(date, time, OFFSET);
-            OffsetDateTime slotEnd = slotStart.plusMinutes(duration);
 
-            if (slotStart.isBefore(now)) continue;
+            OffsetDateTime slotStart =
+                    OffsetDateTime.of(
+                            date,
+                            time,
+                            OFFSET
+                    );
+
+            OffsetDateTime slotEnd =
+                    slotStart.plusMinutes(duration);
+
+            // -----------------------------------------------------
+            // Não mostrar horário que já passou
+            // -----------------------------------------------------
+
+            if (slotStart.isBefore(now)) {
+                continue;
+            }
 
             Employee freeEmployee = null;
-            for (Map.Entry<Employee, WorkingHour> entry : workingEmployees.entrySet()) {
-                WorkingHour wh = entry.getValue();
-                boolean withinHours = !time.isBefore(wh.getStartTime()) && !time.plusMinutes(duration).isAfter(wh.getEndTime());
-                if (!withinHours) continue;
 
-                Employee candidate = entry.getKey();
-                List<Appointment> dayAppointments = appointmentRepository.findByEmployeeIdAndStartsAtBetween(
-                        candidate.getId(),
-                        OffsetDateTime.of(date, LocalTime.MIN, OFFSET),
-                        OffsetDateTime.of(date, LocalTime.MAX, OFFSET)
-                );
+            // =====================================================
+            // PROCURAR UM FUNCIONÁRIO LIVRE
+            // =====================================================
 
-                boolean isFree = dayAppointments.stream()
-                        .filter(a -> a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.CONFIRMED || a.getStatus() == AppointmentStatus.IN_PROGRESS)
-                        .noneMatch(a -> a.getStartsAt().isBefore(slotEnd) && a.getEndsAt().isAfter(slotStart));
+            for (Map.Entry<Employee, List<WorkingHour>> entry :
+                    employeeWorkingHours.entrySet()) {
+
+                Employee employee = entry.getKey();
+                List<WorkingHour> hours = entry.getValue();
+
+                // -------------------------------------------------
+                // Verificar se o horário cabe em algum expediente
+                // -------------------------------------------------
+
+                boolean withinWorkingHours =
+                        hours.stream()
+                                .anyMatch(wh ->
+                                        !time.isBefore(
+                                                wh.getStartTime()
+                                        )
+                                                &&
+                                                !time.plusMinutes(duration)
+                                                        .isAfter(
+                                                                wh.getEndTime()
+                                                        )
+                                );
+
+                if (!withinWorkingHours) {
+                    continue;
+                }
+
+                // =================================================
+                // BUSCAR AGENDAMENTOS DO FUNCIONÁRIO
+                // =================================================
+
+                List<Appointment> appointments =
+                        appointmentRepository
+                                .findByEmployeeIdAndStartsAtBetween(
+                                        employee.getId(),
+
+                                        OffsetDateTime.of(
+                                                date,
+                                                LocalTime.MIN,
+                                                OFFSET
+                                        ),
+
+                                        OffsetDateTime.of(
+                                                date,
+                                                LocalTime.MAX,
+                                                OFFSET
+                                        )
+                                );
+
+                // =================================================
+                // VERIFICAR CONFLITO
+                // =================================================
+
+                boolean isFree =
+                        appointments.stream()
+                                .filter(a ->
+                                        a.getStatus()
+                                                == AppointmentStatus.PENDING
+                                                ||
+                                                a.getStatus()
+                                                        == AppointmentStatus.CONFIRMED
+                                                ||
+                                                a.getStatus()
+                                                        == AppointmentStatus.IN_PROGRESS
+                                )
+                                .noneMatch(a ->
+                                        a.getStartsAt()
+                                                .isBefore(slotEnd)
+                                                &&
+                                                a.getEndsAt()
+                                                        .isAfter(slotStart)
+                                );
+
+                // =================================================
+                // ENCONTROU FUNCIONÁRIO LIVRE
+                // =================================================
 
                 if (isFree) {
-                    freeEmployee = candidate;
+
+                    freeEmployee = employee;
+
                     break;
                 }
             }
 
-            String timeLabel = time.toString();
+            // =====================================================
+            // CRIAR SLOT
+            // =====================================================
+
             if (freeEmployee != null) {
-                result.add(new TimeSlotDTO(timeLabel, true, freeEmployee.getId(), freeEmployee.getUser().getName()));
+
+                result.add(
+                        new TimeSlotDTO(
+                                time.toString(),
+                                true,
+                                freeEmployee.getId(),
+                                freeEmployee.getUser().getName()
+                        )
+                );
+
             } else {
-                result.add(new TimeSlotDTO(timeLabel, false, null, null));
+
+                result.add(
+                        new TimeSlotDTO(
+                                time.toString(),
+                                false,
+                                null,
+                                null
+                        )
+                );
             }
         }
 

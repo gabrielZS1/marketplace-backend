@@ -5,9 +5,13 @@ import com.marketplace.backend.entity.Appointment;
 import com.marketplace.backend.entity.Employee;
 import com.marketplace.backend.entity.WorkingHour;
 import com.marketplace.backend.enums.AppointmentStatus;
+import com.marketplace.backend.entity.TimeBlock;
+import com.marketplace.backend.entity.TimeOff;
 import com.marketplace.backend.repository.AppointmentRepository;
 import com.marketplace.backend.repository.EmployeeRepository;
 import com.marketplace.backend.repository.ServiceRepository;
+import com.marketplace.backend.repository.TimeBlockRepository;
+import com.marketplace.backend.repository.TimeOffRepository;
 import com.marketplace.backend.repository.WorkingHourRepository;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -28,17 +32,23 @@ public class AvailabilityController {
     private final WorkingHourRepository workingHourRepository;
     private final AppointmentRepository appointmentRepository;
     private final ServiceRepository serviceRepository;
+    private final TimeBlockRepository timeBlockRepository;
+    private final TimeOffRepository timeOffRepository;
 
     public AvailabilityController(
             EmployeeRepository employeeRepository,
             WorkingHourRepository workingHourRepository,
             AppointmentRepository appointmentRepository,
-            ServiceRepository serviceRepository
+            ServiceRepository serviceRepository,
+            TimeBlockRepository timeBlockRepository,
+            TimeOffRepository timeOffRepository
     ) {
         this.employeeRepository = employeeRepository;
         this.workingHourRepository = workingHourRepository;
         this.appointmentRepository = appointmentRepository;
         this.serviceRepository = serviceRepository;
+        this.timeBlockRepository = timeBlockRepository;
+        this.timeOffRepository = timeOffRepository;
     }
 
     @GetMapping("/api/businesses/{businessId}/availability")
@@ -211,6 +221,30 @@ public class AvailabilityController {
                 OffsetDateTime.now(OFFSET);
 
         // =========================================================
+        // BLOQUEIOS (estabelecimento) e FOLGAS (profissional) DO DIA
+        // =========================================================
+
+        OffsetDateTime dayStart = OffsetDateTime.of(date, LocalTime.MIN, OFFSET);
+        OffsetDateTime dayEnd = OffsetDateTime.of(date, LocalTime.MAX, OFFSET);
+
+        List<TimeBlock> dayBlocks =
+                timeBlockRepository
+                        .findByBusinessIdAndStartsAtLessThanAndEndsAtGreaterThan(
+                                businessId, dayEnd, dayStart
+                        );
+
+        Map<UUID, List<TimeOff>> employeeTimeOffs = new LinkedHashMap<>();
+        for (Employee employee : employees) {
+            employeeTimeOffs.put(
+                    employee.getId(),
+                    timeOffRepository
+                            .findByEmployeeIdAndStartsAtLessThanAndEndsAtGreaterThan(
+                                    employee.getId(), dayEnd, dayStart
+                            )
+            );
+        }
+
+        // =========================================================
         // RESULTADO
         // =========================================================
 
@@ -234,6 +268,22 @@ public class AvailabilityController {
             // -----------------------------------------------------
 
             if (slotStart.isBefore(now)) {
+                continue;
+            }
+
+            // -----------------------------------------------------
+            // Estabelecimento bloqueado nesse horário
+            // -----------------------------------------------------
+
+            final OffsetDateTime fSlotStart = slotStart;
+            final OffsetDateTime fSlotEnd = slotEnd;
+            boolean businessBlocked = dayBlocks.stream().anyMatch(b ->
+                    b.getStartsAt().isBefore(fSlotEnd)
+                            && b.getEndsAt().isAfter(fSlotStart)
+            );
+
+            if (businessBlocked) {
+                result.add(new TimeSlotDTO(time.toString(), false, null, null));
                 continue;
             }
 
@@ -316,11 +366,23 @@ public class AvailabilityController {
                                                         .isAfter(slotStart)
                                 );
 
+                // -------------------------------------------------
+                // Profissional de folga nesse horário
+                // -------------------------------------------------
+
+                boolean onTimeOff = employeeTimeOffs
+                        .getOrDefault(employee.getId(), List.of())
+                        .stream()
+                        .anyMatch(o ->
+                                o.getStartsAt().isBefore(fSlotEnd)
+                                        && o.getEndsAt().isAfter(fSlotStart)
+                        );
+
                 // =================================================
                 // ENCONTROU FUNCIONÁRIO LIVRE
                 // =================================================
 
-                if (isFree) {
+                if (isFree && !onTimeOff) {
 
                     freeEmployee = employee;
 

@@ -8,6 +8,8 @@ import com.marketplace.backend.repository.PromoCodeRepository;
 import com.marketplace.backend.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -35,9 +37,17 @@ public class PromoCodeController {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Gera um lote de códigos promocionais.
+     * Cada código concede {freeDays} dias de teste ao ser resgatado no onboarding.
+     */
     @PostMapping("/generate")
     public ResponseEntity<List<PromoCodeResponseDTO>> generate(@Valid @RequestBody GeneratePromoCodesRequestDTO request) {
         checkIsAdmin();
+
+        String label = (request.getLabel() != null && !request.getLabel().isBlank())
+                ? request.getLabel().trim()
+                : null;
 
         List<PromoCodeResponseDTO> generated = new ArrayList<>();
 
@@ -46,13 +56,41 @@ public class PromoCodeController {
 
             PromoCode promoCode = new PromoCode();
             promoCode.setCode(code);
-            promoCode.setFreeMonths(request.getFreeMonths());
+            promoCode.setFreeDays(request.getFreeDays());
+            promoCode.setLabel(label);
             promoCodeRepository.save(promoCode);
 
-            generated.add(new PromoCodeResponseDTO(code, request.getFreeMonths()));
+            generated.add(new PromoCodeResponseDTO(code, request.getFreeDays(), label));
         }
 
         return ResponseEntity.ok(generated);
+    }
+
+    /**
+     * Exporta os códigos ainda não resgatados em CSV, pronto pra subir no Kiwify
+     * como "chave de licença" / conteúdo entregável (1 código por comprador).
+     * Filtra por lote via ?label=LANCAMENTO-15
+     */
+    @GetMapping(value = "/export", produces = "text/csv")
+    public ResponseEntity<String> export(@RequestParam(required = false) String label) {
+        checkIsAdmin();
+
+        List<PromoCode> codes = (label != null && !label.isBlank())
+                ? promoCodeRepository.findByRedeemedFalseAndLabelOrderByCreatedAtAsc(label.trim())
+                : promoCodeRepository.findByRedeemedFalseOrderByCreatedAtAsc();
+
+        StringBuilder csv = new StringBuilder("code,free_days,label\n");
+        for (PromoCode c : codes) {
+            csv.append(c.getCode()).append(',')
+               .append(c.getFreeDays()).append(',')
+               .append(c.getLabel() == null ? "" : c.getLabel())
+               .append('\n');
+        }
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"promo-codes.csv\"")
+                .contentType(MediaType.valueOf("text/csv"))
+                .body(csv.toString());
     }
 
     private String generateUniqueCode() {

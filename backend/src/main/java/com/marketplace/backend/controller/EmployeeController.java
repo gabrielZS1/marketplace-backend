@@ -408,6 +408,31 @@ public class EmployeeController {
     }
 
     // =========================================================
+    // REDEFINIR SENHA DO FUNCIONÁRIO (dono)
+    // =========================================================
+
+    @PatchMapping("/{employeeId}/password")
+    public ResponseEntity<java.util.Map<String, String>> resetPassword(
+            @PathVariable UUID businessId,
+            @PathVariable UUID employeeId,
+            @jakarta.validation.Valid @RequestBody(required = false)
+            com.marketplace.backend.dto.ResetEmployeePasswordRequestDTO request
+    ) {
+        Employee employee = findOwnedEmployee(businessId, employeeId);
+
+        String newPassword = (request != null && request.getPassword() != null
+                && !request.getPassword().isBlank())
+                ? request.getPassword()
+                : generateTemporaryPassword();
+
+        User user = employee.getUser();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(java.util.Map.of("password", newPassword));
+    }
+
+    // =========================================================
     // BUSCAR FUNCIONÁRIO E VALIDAR PERMISSÃO
     // =========================================================
 

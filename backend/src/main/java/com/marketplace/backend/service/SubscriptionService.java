@@ -30,7 +30,14 @@ public class SubscriptionService {
     @Value("${app.base-url}")
     private String baseUrl;
 
-    public SubscriptionResult createSubscription(Business business, int freeMonths) {
+    /**
+     * Cria a assinatura recorrente mensal no Mercado Pago.
+     *
+     * @param freeTrialDays dias grátis antes da primeira cobrança (0 = cobra já).
+     *                      Use os dias restantes do trial pra o cliente não pagar em dobro
+     *                      ao assinar ainda dentro do período gratuito.
+     */
+    public SubscriptionResult createSubscription(Business business, int freeTrialDays) {
         String payerEmail = business.getOwner().getEmail();
 
         Map<String, Object> autoRecurring = new LinkedHashMap<>();
@@ -39,10 +46,10 @@ public class SubscriptionService {
         autoRecurring.put("transaction_amount", business.getPlanPrice());
         autoRecurring.put("currency_id", "BRL");
 
-        if (freeMonths > 0) {
+        if (freeTrialDays > 0) {
             Map<String, Object> freeTrial = new LinkedHashMap<>();
-            freeTrial.put("frequency", freeMonths);
-            freeTrial.put("frequency_type", "months");
+            freeTrial.put("frequency", freeTrialDays);
+            freeTrial.put("frequency_type", "days");
             autoRecurring.put("free_trial", freeTrial);
         }
 

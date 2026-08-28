@@ -13,7 +13,6 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
 
     Optional<Review> findByAppointmentId(UUID appointmentId);
 
-    // ← JOIN FETCH garante que appointment e service são carregados junto
     @Query("""
         SELECT r FROM Review r
         JOIN FETCH r.appointment a
@@ -25,9 +24,11 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
     """)
     List<Review> findByBusinessIdOrderByCreatedAtDesc(@Param("businessId") UUID businessId);
 
-    Double findAverageRatingByBusinessId(UUID id);
+    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.business.id = :businessId")
+    Double findAverageRatingByBusinessId(@Param("businessId") UUID businessId);
 
     long countByBusinessId(UUID id);
 
-    Double findAverageRatingByEmployeeId(UUID id);
+    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.employee.id = :employeeId")
+    Double findAverageRatingByEmployeeId(@Param("employeeId") UUID employeeId);
 }

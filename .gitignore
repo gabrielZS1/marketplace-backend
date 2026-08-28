@@ -1,0 +1,23 @@
+# --- Segredos e config sensível ---
+**/application.properties
+**/application-*.properties
+!**/application.properties.example
+.env
+.env.*
+!.env.example
+
+# --- Uploads de usuário (não versionar) ---
+/uploads/
+**/uploads/
+
+# --- Ferramentas de agente / IDE locais ---
+.claude/
+.codex/
+.agents/
+.impeccable/
+.idea/
+.vscode/
+
+# --- Build ---
+target/
+build/

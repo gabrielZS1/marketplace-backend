@@ -9,18 +9,19 @@ import com.marketplace.backend.repository.BusinessRepository;
 import com.marketplace.backend.repository.PromoCodeRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.service.SubscriptionService;
+import com.marketplace.backend.service.PricingService;
 import com.marketplace.backend.repository.WorkingHourRepository;
 import com.marketplace.backend.entity.WorkingHour;
 
 import jakarta.validation.Valid;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -33,13 +34,18 @@ public class BusinessOnboardingController {
     private final WorkingHourRepository workingHourRepository;
     private final SubscriptionService subscriptionService;
     private final PromoCodeRepository promoCodeRepository;
+    private final PricingService pricingService;
+
+    @Value("${app.subscription.default-trial-days:7}")
+    private int defaultTrialDays;
 
     public BusinessOnboardingController(
             BusinessRepository businessRepository,
             UserRepository userRepository,
             WorkingHourRepository workingHourRepository,
             SubscriptionService subscriptionService,
-            PromoCodeRepository promoCodeRepository
+            PromoCodeRepository promoCodeRepository,
+            PricingService pricingService
     ) {
 
         this.businessRepository = businessRepository;
@@ -47,6 +53,7 @@ public class BusinessOnboardingController {
         this.workingHourRepository = workingHourRepository;
         this.subscriptionService = subscriptionService;
         this.promoCodeRepository = promoCodeRepository;
+        this.pricingService = pricingService;
     }
 
     // ============================================================
@@ -117,6 +124,12 @@ public class BusinessOnboardingController {
         business.setOwner(owner);
         business.setCategory(request.getCategory());
         business.setOnboardingCompleted(false);
+
+        // O período de teste começa quando a conta é criada.
+        // Se um código promocional for aplicado no fim do onboarding, o prazo
+        // é recalculado a partir desta mesma data (createdAt).
+        business.setSubscriptionStatus(SubscriptionStatus.TRIAL);
+        business.setTrialEndsAt(OffsetDateTime.now().plusDays(defaultTrialDays));
 
         Business saved =
                 businessRepository.save(business);
@@ -235,7 +248,7 @@ public class BusinessOnboardingController {
         );
 
         business.setPlanPrice(
-                calculatePlanPrice(
+                pricingService.monthlyPriceFor(
                         request.getTeamSize()
                 )
         );
@@ -343,6 +356,11 @@ public class BusinessOnboardingController {
         business.setOnboardingCompleted(true);
         business.setActive(true);
 
+        // O período de teste conta a partir da criação da conta, não do fim do onboarding.
+        OffsetDateTime trialAnchor = business.getCreatedAt() != null
+                ? business.getCreatedAt()
+                : OffsetDateTime.now();
+
         String paymentUrl = null;
 
         // ========================================================
@@ -378,8 +396,7 @@ public class BusinessOnboardingController {
                 );
             }
 
-            int freeMonths =
-                    promo.getFreeMonths();
+            int freeDays = promo.getFreeDays();
 
             promo.setRedeemed(true);
 
@@ -393,38 +410,27 @@ public class BusinessOnboardingController {
 
             promoCodeRepository.save(promo);
 
+            // Trial é 100% controlado por nós. A assinatura no Mercado Pago só é
+            // criada quando o cliente for pagar (tela de renovação / POST /subscribe).
             business.setTrialEndsAt(
-                    OffsetDateTime.now()
-                            .plusMonths(freeMonths)
+                    trialAnchor.plusDays(freeDays)
             );
 
             business.setSubscriptionStatus(
                     SubscriptionStatus.TRIAL
             );
 
-            SubscriptionService.SubscriptionResult result =
-                    subscriptionService.createSubscription(
-                            business,
-                            freeMonths
-                    );
-
-            business.setMpPreapprovalId(
-                    result.preapprovalId()
-            );
-
-            paymentUrl =
-                    result.paymentUrl();
+            business.setMpPreapprovalId(null);
 
         } else {
 
             // ====================================================
             // SEM CÓDIGO PROMOCIONAL
-            // 7 DIAS GRÁTIS
+            // Trial padrão (fora do lançamento): 7 dias a partir da criação da conta
             // ====================================================
 
             business.setTrialEndsAt(
-                    OffsetDateTime.now()
-                            .plusDays(7)
+                    trialAnchor.plusDays(defaultTrialDays)
             );
 
             business.setSubscriptionStatus(
@@ -481,7 +487,7 @@ public class BusinessOnboardingController {
         );
 
         business.setPlanPrice(
-                calculatePlanPrice(
+                pricingService.monthlyPriceFor(
                         request.getTeamSize()
                 )
         );
@@ -496,9 +502,7 @@ public class BusinessOnboardingController {
                 result.preapprovalId()
         );
 
-        business.setSubscriptionStatus(
-                SubscriptionStatus.TRIAL
-        );
+        // Mantém o status atual; o webhook do Mercado Pago confirma a nova assinatura.
 
         businessRepository.save(business);
 
@@ -540,29 +544,6 @@ public class BusinessOnboardingController {
         }
 
         return business;
-    }
-
-    private BigDecimal calculatePlanPrice(
-            int teamSize
-    ) {
-
-        if (teamSize == 1) {
-            return new BigDecimal("10.00");
-        }
-
-        if (teamSize == 2) {
-            return new BigDecimal("15.00");
-        }
-
-        if (teamSize == 3) {
-            return new BigDecimal("20.00");
-        }
-
-        if (teamSize == 4) {
-            return new BigDecimal("30.00");
-        }
-
-        return new BigDecimal("40.00");
     }
 
     private UUID getLoggedUserId() {

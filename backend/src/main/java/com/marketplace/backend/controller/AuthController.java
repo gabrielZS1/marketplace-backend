@@ -1,6 +1,7 @@
 package com.marketplace.backend.controller;
 
 import com.marketplace.backend.dto.AuthResponseDTO;
+import com.marketplace.backend.dto.ChangePasswordRequestDTO;
 import com.marketplace.backend.dto.LoginRequestDTO;
 import com.marketplace.backend.dto.RefreshRequestDTO;
 import com.marketplace.backend.dto.RegisterRequestDTO;
@@ -125,6 +126,25 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequestDTO request) {
         refreshTokenService.revoke(request.getRefreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request) {
+        java.util.UUID userId = java.util.UUID.fromString(
+                SecurityContextHolder.getContext().getAuthentication().getName()
+        );
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Senha atual incorreta");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
         return ResponseEntity.noContent().build();
     }
 }

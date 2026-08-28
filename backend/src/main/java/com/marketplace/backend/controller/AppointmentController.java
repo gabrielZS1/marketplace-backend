@@ -12,6 +12,8 @@ import com.marketplace.backend.repository.AppointmentRepository;
 import com.marketplace.backend.repository.BusinessRepository;
 import com.marketplace.backend.repository.EmployeeRepository;
 import com.marketplace.backend.repository.ServiceRepository;
+import com.marketplace.backend.repository.TimeBlockRepository;
+import com.marketplace.backend.repository.TimeOffRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.repository.WorkingHourRepository;
 import com.marketplace.backend.service.PushNotificationService;
@@ -37,7 +39,10 @@ public class AppointmentController {
     private final ServiceRepository serviceRepository;
     private final BusinessRepository businessRepository;
     private final WorkingHourRepository workingHourRepository;
+    private final TimeBlockRepository timeBlockRepository;
+    private final TimeOffRepository timeOffRepository;
     private final PushNotificationService pushNotificationService;
+    private final com.marketplace.backend.service.BusinessAccessService businessAccessService;
 
     public AppointmentController(
             AppointmentRepository appointmentRepository,
@@ -46,7 +51,10 @@ public class AppointmentController {
             ServiceRepository serviceRepository,
             BusinessRepository businessRepository,
             WorkingHourRepository workingHourRepository,
-            PushNotificationService pushNotificationService, PushNotificationService pushNotificationService1 // <- adicionar aqui
+            TimeBlockRepository timeBlockRepository,
+            TimeOffRepository timeOffRepository,
+            PushNotificationService pushNotificationService,
+            com.marketplace.backend.service.BusinessAccessService businessAccessService
     ) {
         this.appointmentRepository = appointmentRepository;
         this.userRepository = userRepository;
@@ -54,10 +62,15 @@ public class AppointmentController {
         this.serviceRepository = serviceRepository;
         this.businessRepository = businessRepository;
         this.workingHourRepository = workingHourRepository;
-        // <- campo novo
-        this.pushNotificationService = pushNotificationService1;
+        this.businessAccessService = businessAccessService;
+        this.timeBlockRepository = timeBlockRepository;
+        this.timeOffRepository = timeOffRepository;
+        this.pushNotificationService = pushNotificationService;
     }
 
+    // =========================================================
+    // CRIAR AGENDAMENTO (avisa o ESTABELECIMENTO)
+    // =========================================================
 
     @PostMapping
     public ResponseEntity<AppointmentResponseDTO> create(
@@ -85,6 +98,16 @@ public class AppointmentController {
         if (!startsAt.isAfter(OffsetDateTime.now(OFFSET))) {
             throw new RuntimeException(
                     "O horário do agendamento deve estar no futuro"
+            );
+        }
+
+        if (!timeBlockRepository
+                .findByBusinessIdAndStartsAtLessThanAndEndsAtGreaterThan(
+                        business.getId(), endsAt, startsAt
+                )
+                .isEmpty()) {
+            throw new RuntimeException(
+                    "O estabelecimento está indisponível neste horário"
             );
         }
 
@@ -131,6 +154,12 @@ public class AppointmentController {
                 );
             }
 
+            if (isOnTimeOff(employee.getId(), startsAt, endsAt)) {
+                throw new RuntimeException(
+                        "Este profissional está de folga neste horário"
+                );
+            }
+
         } else {
 
             List<Employee> employees =
@@ -155,6 +184,13 @@ public class AppointmentController {
                     )
                     .filter(e ->
                             !hasConflict(
+                                    e.getId(),
+                                    startsAt,
+                                    endsAt
+                            )
+                    )
+                    .filter(e ->
+                            !isOnTimeOff(
                                     e.getId(),
                                     startsAt,
                                     endsAt
@@ -192,8 +228,7 @@ public class AppointmentController {
         appointment.setNotes(request.getNotes());
         appointment.setStatus(AppointmentStatus.PENDING);
 
-        Appointment saved =
-                appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
 
         // dispara o push pro dono do estabelecimento; se falhar, não quebra o agendamento
         pushNotificationService.sendAppointmentCreated(
@@ -206,6 +241,7 @@ public class AppointmentController {
                 toResponseDTO(saved)
         );
     }
+
     @GetMapping("/me")
     public List<AppointmentResponseDTO> listMyAppointments() {
 
@@ -223,20 +259,7 @@ public class AppointmentController {
             @PathVariable UUID businessId
     ) {
 
-        Business business =
-                businessRepository.findById(businessId)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Empresa não encontrada"
-                                ));
-
-        UUID loggedUserId = getLoggedUserId();
-
-        if (!business.getOwner().getId().equals(loggedUserId)) {
-            throw new RuntimeException(
-                    "Você não tem permissão para ver os agendamentos desta empresa"
-            );
-        }
+        businessAccessService.requireMember(businessId, getLoggedUserId());
 
         return appointmentRepository
                 .findByBusinessId(businessId)
@@ -244,6 +267,10 @@ public class AppointmentController {
                 .map(this::toResponseDTO)
                 .toList();
     }
+
+    // =========================================================
+    // ATUALIZAR STATUS (avisa o CLIENTE)
+    // =========================================================
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<AppointmentResponseDTO> updateStatus(
@@ -258,17 +285,9 @@ public class AppointmentController {
                                         "Agendamento não encontrado"
                                 ));
 
-        UUID loggedUserId = getLoggedUserId();
-
-        if (!appointment.getBusiness()
-                .getOwner()
-                .getId()
-                .equals(loggedUserId)) {
-
-            throw new RuntimeException(
-                    "Você não tem permissão para alterar este agendamento"
-            );
-        }
+        businessAccessService.requireMember(
+                appointment.getBusiness().getId(), getLoggedUserId()
+        );
 
         AppointmentStatus currentStatus =
                 appointment.getStatus();
@@ -306,6 +325,13 @@ public class AppointmentController {
 
         Appointment updated =
                 appointmentRepository.save(appointment);
+
+        // avisa o cliente que o status do agendamento mudou
+        pushNotificationService.sendAppointmentStatusChanged(
+                appointment.getClient().getExpoPushToken(),
+                appointment.getBusiness().getName(),
+                newStatus.name()
+        );
 
         return ResponseEntity.ok(
                 toResponseDTO(updated)
@@ -379,6 +405,19 @@ public class AppointmentController {
                 .isEmpty();
     }
 
+    private boolean isOnTimeOff(
+            UUID employeeId,
+            OffsetDateTime startsAt,
+            OffsetDateTime endsAt
+    ) {
+
+        return !timeOffRepository
+                .findByEmployeeIdAndStartsAtLessThanAndEndsAtGreaterThan(
+                        employeeId, endsAt, startsAt
+                )
+                .isEmpty();
+    }
+
     private boolean isWithinWorkingHours(
             Employee employee,
             Business business,
@@ -447,6 +486,7 @@ public class AppointmentController {
                 a.getBusiness().getName(),
                 a.getClient().getName(),
                 a.getEmployee().getUser().getName(),
+                a.getEmployee().getId(),
                 a.getService().getName(),
                 a.getStartsAt(),
                 a.getEndsAt(),

@@ -30,7 +30,10 @@ build/
 
 ### Configuração sensível ###
 application.properties
+application-*.properties
+!application.properties.example
 
 ### Variáveis de ambiente ###
 .env
-.env.local
+.env.*
+!.env.example

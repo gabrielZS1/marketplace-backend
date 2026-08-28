@@ -34,14 +34,14 @@ public class SubscriptionGraceCheckJob {
             }
         }
 
-        // Caso 2: trial de 7 dias (sem assinatura no Mercado Pago) que venceu
+        // Caso 2: período de teste (7/15/30 dias, sem assinatura no Mercado Pago) que venceu
         List<Business> onTrial = businessRepository.findBySubscriptionStatus(SubscriptionStatus.TRIAL);
         for (Business business : onTrial) {
             boolean neverSubscribed = business.getMpPreapprovalId() == null;
             boolean trialExpired = business.getTrialEndsAt() != null && business.getTrialEndsAt().isBefore(now);
 
             if (neverSubscribed && trialExpired) {
-                business.setSubscriptionStatus(SubscriptionStatus.SUSPENDED);
+                business.setSubscriptionStatus(SubscriptionStatus.EXPIRED);
                 business.setActive(false);
                 businessRepository.save(business);
             }

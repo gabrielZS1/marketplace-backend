@@ -4,6 +4,7 @@ import com.marketplace.backend.dto.BusinessDetailResponseDTO;
 import com.marketplace.backend.dto.BusinessMeResponseDTO;
 import com.marketplace.backend.dto.BusinessRequestDTO;
 import com.marketplace.backend.dto.BusinessResponseDTO;
+import com.marketplace.backend.dto.BusinessUpdateRequestDTO;
 import com.marketplace.backend.dto.ClientResponseDTO;
 import com.marketplace.backend.dto.UpdateBusinessStatusDTO;
 import com.marketplace.backend.entity.Business;
@@ -14,8 +15,13 @@ import com.marketplace.backend.enums.PhotoCategory;
 import com.marketplace.backend.repository.AppointmentRepository;
 import com.marketplace.backend.repository.BusinessPhotoRepository;
 import com.marketplace.backend.repository.BusinessRepository;
+import com.marketplace.backend.repository.EmployeeRepository;
 import com.marketplace.backend.repository.ReviewRepository;
 import com.marketplace.backend.repository.UserRepository;
+import com.marketplace.backend.service.BusinessAccessService;
+import com.marketplace.backend.service.FileStorageService;
+import com.marketplace.backend.service.SubscriptionStatusService;
+
 
 import jakarta.validation.Valid;
 
@@ -23,6 +29,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -39,19 +46,33 @@ public class BusinessController {
     private final BusinessPhotoRepository businessPhotoRepository;
     private final ReviewRepository reviewRepository;
     private final AppointmentRepository appointmentRepository;
+    private final FileStorageService fileStorageService;
+    private final SubscriptionStatusService subscriptionStatusService;
+    private final EmployeeRepository employeeRepository;
+    private final BusinessAccessService businessAccessService;
+
 
     public BusinessController(
             BusinessRepository businessRepository,
             UserRepository userRepository,
             BusinessPhotoRepository businessPhotoRepository,
             ReviewRepository reviewRepository,
-            AppointmentRepository appointmentRepository
+            AppointmentRepository appointmentRepository,
+            FileStorageService fileStorageService,
+            SubscriptionStatusService subscriptionStatusService,
+            EmployeeRepository employeeRepository,
+            BusinessAccessService businessAccessService
     ) {
         this.businessRepository = businessRepository;
         this.userRepository = userRepository;
         this.businessPhotoRepository = businessPhotoRepository;
         this.reviewRepository = reviewRepository;
         this.appointmentRepository = appointmentRepository;
+        this.fileStorageService = fileStorageService;
+        this.subscriptionStatusService = subscriptionStatusService;
+        this.employeeRepository = employeeRepository;
+        this.businessAccessService = businessAccessService;
+
     }
 
     // =========================================================
@@ -135,20 +156,7 @@ public class BusinessController {
             @PathVariable UUID id
     ) {
 
-        Business business = businessRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Empresa não encontrada"
-                        )
-                );
-
-        UUID loggedUserId = getLoggedUserId();
-
-        if (!business.getOwner().getId().equals(loggedUserId)) {
-            throw new RuntimeException(
-                    "Você não tem permissão para ver os clientes desta empresa"
-            );
-        }
+        businessAccessService.requireMember(id, getLoggedUserId());
 
         Map<UUID, ClientResponseDTO> clientsMap =
                 new LinkedHashMap<>();
@@ -229,6 +237,51 @@ public class BusinessController {
                         )
                 );
 
+        return ResponseEntity.ok(toDetailDTO(business));
+    }
+
+    // =========================================================
+    // ATUALIZAR DADOS DA EMPRESA (dono)
+    // =========================================================
+
+    @PatchMapping("/{id}/details")
+    public ResponseEntity<BusinessDetailResponseDTO> updateDetails(
+            @PathVariable UUID id,
+            @RequestBody BusinessUpdateRequestDTO request
+    ) {
+
+        Business business = businessRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
+
+        UUID loggedUserId = getLoggedUserId();
+        if (!business.getOwner().getId().equals(loggedUserId)) {
+            throw new RuntimeException("Você não tem permissão para editar esta empresa");
+        }
+
+        if (request.getName() != null) business.setName(request.getName());
+        if (request.getDescription() != null) business.setDescription(request.getDescription());
+        if (request.getPhone() != null) business.setPhone(request.getPhone());
+        if (request.getInstagramUrl() != null) business.setInstagramUrl(request.getInstagramUrl());
+        if (request.getTiktokUrl() != null) business.setTiktokUrl(request.getTiktokUrl());
+        if (request.getAddress() != null) business.setAddress(request.getAddress());
+        if (request.getCity() != null) business.setCity(request.getCity());
+        if (request.getState() != null) business.setState(request.getState());
+        if (request.getLatitude() != null) business.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) business.setLongitude(request.getLongitude());
+        if (request.getWorkLocationType() != null) business.setWorkLocationType(request.getWorkLocationType());
+        if (request.getHasParking() != null) business.setHasParking(request.getHasParking());
+        if (request.getAllowsPets() != null) business.setAllowsPets(request.getAllowsPets());
+        if (request.getHasWifi() != null) business.setHasWifi(request.getHasWifi());
+
+        businessRepository.save(business);
+
+        return ResponseEntity.ok(toDetailDTO(business));
+    }
+
+    private BusinessDetailResponseDTO toDetailDTO(Business business) {
+
+        UUID id = business.getId();
+
         List<BusinessPhoto> allPhotos =
                 businessPhotoRepository
                         .findByBusinessIdOrderByPosition(id);
@@ -264,38 +317,36 @@ public class BusinessController {
                 reviewRepository
                         .countByBusinessId(id);
 
-        return ResponseEntity.ok(
-                new BusinessDetailResponseDTO(
-                        business.getId(),
-                        business.getName(),
-                        business.getCategory(),
-                        business.getDescription(),
-                        business.getAddress(),
-                        business.getCity(),
-                        business.getState(),
-                        business.getLatitude(),
-                        business.getLongitude(),
+        return new BusinessDetailResponseDTO(
+                business.getId(),
+                business.getName(),
+                business.getCategory(),
+                business.getDescription(),
+                business.getLogoUrl(),
+                business.getAddress(),
+                business.getCity(),
+                business.getState(),
+                business.getLatitude(),
+                business.getLongitude(),
 
-                        photos,
-                        workspacePhotos,
-                        portfolioPhotos,
+                photos,
+                workspacePhotos,
+                portfolioPhotos,
 
-                        rating,
-                        reviewCount,
+                rating,
+                reviewCount,
 
-                        business.getFeatured(),
+                business.getFeatured(),
 
-                        // NOVO
-                        business.getWorkLocationType(),
+                business.getWorkLocationType(),
 
-                        business.getPhone(),
-                        business.getInstagramUrl(),
-                        business.getTiktokUrl(),
+                business.getPhone(),
+                business.getInstagramUrl(),
+                business.getTiktokUrl(),
 
-                        business.getHasParking(),
-                        business.getAllowsPets(),
-                        business.getHasWifi()
-                )
+                business.getHasParking(),
+                business.getAllowsPets(),
+                business.getHasWifi()
         );
     }
 
@@ -351,55 +402,131 @@ public class BusinessController {
     @GetMapping("/mine/status")
     public ResponseEntity<BusinessMeResponseDTO> myStatus() {
 
-        UUID ownerId = getLoggedUserId();
+        UUID userId = getLoggedUserId();
 
-        List<Business> businesses =
-                businessRepository.findAll().stream()
-                        .filter(b ->
-                                b.getOwner()
-                                        .getId()
-                                        .equals(ownerId)
-                        )
-                        .toList();
-
-        if (businesses.isEmpty()) {
-            return ResponseEntity.notFound().build();
+        Business owned = businessRepository
+                .findFirstByOwnerIdOrderByOnboardingCompletedDescCreatedAtAsc(userId)
+                .orElse(null);
+        if (owned != null) {
+            return ResponseEntity.ok(subscriptionStatusService.toMeResponse(owned, "OWNER", null));
         }
 
-        Business business =
-                businesses.stream()
-                        .filter(b ->
-                                Boolean.TRUE.equals(
-                                        b.getOnboardingCompleted()
-                                )
-                        )
-                        .findFirst()
-                        .orElse(businesses.get(0));
-
-        return ResponseEntity.ok(
-                new BusinessMeResponseDTO(
-                        business.getId(),
-                        business.getName(),
-                        business.getOnboardingCompleted(),
-                        business.getSubscriptionStatus(),
-                        business.getTrialEndsAt(),
-                        business.getTeamSize(),
-                        business.getPlanPrice(),
-                        business.getActive()
-                )
-        );
+        return employeeRepository.findByIdAndActiveTrue(userId)
+                .map(e -> ResponseEntity.ok(
+                        subscriptionStatusService.toMeResponse(e.getBusiness(), "EMPLOYEE", e.getId())
+                ))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // =========================================================
     // ADICIONAR FOTO
     // =========================================================
 
-    @PostMapping("/{id}/photos")
-    public ResponseEntity<Void> addPhoto(
+    @PostMapping(value = "/{id}/photos", consumes = "multipart/form-data")
+    public ResponseEntity<String> addPhoto(
             @PathVariable UUID id,
-            @RequestBody Map<String, Object> body
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "PORTFOLIO") PhotoCategory category
     ) {
-        return null;
+        Business business = businessRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
+
+        UUID loggedUserId = getLoggedUserId();
+        if (!business.getOwner().getId().equals(loggedUserId)) {
+            throw new RuntimeException("Você não tem permissão para editar esta empresa");
+        }
+
+        String photoUrl = fileStorageService.store(file, "businesses/" + id);
+
+        BusinessPhoto photo = new BusinessPhoto();
+        photo.setBusiness(business);
+        photo.setUrl(photoUrl);
+        photo.setCategory(category);
+
+        int nextPosition = businessPhotoRepository.findByBusinessIdOrderByPosition(id).size();
+        photo.setPosition(nextPosition);
+
+        businessPhotoRepository.save(photo);
+
+        return ResponseEntity.ok(photoUrl);
+    }
+
+    // =========================================================
+    // LISTAR FOTOS (dono) — com id e categoria pra gerenciar
+    // =========================================================
+
+    @GetMapping("/{id}/photos")
+    public List<java.util.Map<String, Object>> listPhotos(@PathVariable UUID id) {
+        Business business = businessRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
+
+        UUID loggedUserId = getLoggedUserId();
+        if (!business.getOwner().getId().equals(loggedUserId)) {
+            throw new RuntimeException("Você não tem permissão para ver estas fotos");
+        }
+
+        return businessPhotoRepository.findByBusinessIdOrderByPosition(id).stream()
+                .map(p -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", p.getId());
+                    m.put("url", p.getUrl());
+                    m.put("category", p.getCategory().name());
+                    return m;
+                })
+                .toList();
+    }
+
+    // =========================================================
+    // REMOVER FOTO (dono)
+    // =========================================================
+
+    @DeleteMapping("/{id}/photos/{photoId}")
+    public ResponseEntity<Void> deletePhoto(
+            @PathVariable UUID id,
+            @PathVariable UUID photoId
+    ) {
+        Business business = businessRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
+
+        UUID loggedUserId = getLoggedUserId();
+        if (!business.getOwner().getId().equals(loggedUserId)) {
+            throw new RuntimeException("Você não tem permissão para editar esta empresa");
+        }
+
+        BusinessPhoto photo = businessPhotoRepository.findById(photoId)
+                .orElseThrow(() -> new RuntimeException("Foto não encontrada"));
+
+        if (!photo.getBusiness().getId().equals(id)) {
+            throw new RuntimeException("Foto não pertence a esta empresa");
+        }
+
+        businessPhotoRepository.delete(photo);
+        return ResponseEntity.noContent().build();
+    }
+
+// =========================================================
+// ATUALIZAR LOGO DA EMPRESA
+// =========================================================
+
+    @PostMapping(value = "/{id}/logo", consumes = "multipart/form-data")
+    public ResponseEntity<String> uploadLogo(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        Business business = businessRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
+
+        UUID loggedUserId = getLoggedUserId();
+        if (!business.getOwner().getId().equals(loggedUserId)) {
+            throw new RuntimeException("Você não tem permissão para editar esta empresa");
+        }
+
+        String logoUrl = fileStorageService.store(file, "businesses/" + id + "/logo");
+
+        business.setLogoUrl(logoUrl);
+        businessRepository.save(business);
+
+        return ResponseEntity.ok(logoUrl);
     }
 
     // =========================================================
@@ -439,12 +566,5 @@ public class BusinessController {
                         .getName();
 
         return UUID.fromString(userId);
-    }
-
-    // =========================================================
-    // VERIFICAR PROPRIETÁRIO
-    // =========================================================
-
-    private void checkIsOwner(Business business) {
     }
 }

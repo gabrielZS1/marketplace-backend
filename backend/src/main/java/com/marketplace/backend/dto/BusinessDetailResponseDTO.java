@@ -12,6 +12,7 @@ public class BusinessDetailResponseDTO {
     private String name;
     private BusinessCategory category;
     private String description;
+    private String logoUrl;
     private String address;
     private String city;
     private String state;
@@ -40,6 +41,7 @@ public class BusinessDetailResponseDTO {
             String name,
             BusinessCategory category,
             String description,
+            String logoUrl,
             String address,
             String city,
             String state,
@@ -63,6 +65,7 @@ public class BusinessDetailResponseDTO {
         this.name = name;
         this.category = category;
         this.description = description;
+        this.logoUrl = logoUrl;
         this.address = address;
         this.city = city;
         this.state = state;
@@ -94,6 +97,8 @@ public class BusinessDetailResponseDTO {
     public BusinessCategory getCategory() { return category; }
 
     public String getDescription() { return description; }
+
+    public String getLogoUrl() { return logoUrl; }
 
     public String getAddress() { return address; }
 

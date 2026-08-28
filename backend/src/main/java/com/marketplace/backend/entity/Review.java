@@ -33,6 +33,9 @@ public class Review {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = OffsetDateTime.now();
@@ -56,4 +59,6 @@ public class Review {
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public Employee getEmployee() { return employee; }
     public void setEmployee(Employee employee) { this.employee = employee; }
+    public String getPhotoUrl() { return photoUrl; }
+    public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
 }

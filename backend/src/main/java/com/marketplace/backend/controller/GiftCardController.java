@@ -59,6 +59,28 @@ public class GiftCardController {
         ));
     }
 
+    @DeleteMapping("/{giftCardId}")
+    public ResponseEntity<Void> deactivate(
+            @PathVariable UUID businessId,
+            @PathVariable UUID giftCardId
+    ) {
+        Business business = businessRepository.findById(businessId)
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
+
+        checkIsOwner(business);
+
+        GiftCard giftCard = giftCardRepository.findById(giftCardId)
+                .orElseThrow(() -> new RuntimeException("Cartão-presente não encontrado"));
+
+        if (!giftCard.getBusiness().getId().equals(businessId)) {
+            throw new RuntimeException("Cartão-presente não pertence a esta empresa");
+        }
+
+        giftCard.setActive(false);
+        giftCardRepository.save(giftCard);
+        return ResponseEntity.noContent().build();
+    }
+
     private void checkIsOwner(Business business) {
         UUID loggedUserId = UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
         if (!business.getOwner().getId().equals(loggedUserId)) {

@@ -54,6 +54,9 @@ public class User {
         this.updatedAt = OffsetDateTime.now();
     }
 
+    @Column(name = "expo_push_token", length = 255)
+    private String expoPushToken;
+
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = OffsetDateTime.now();
@@ -78,4 +81,6 @@ public class User {
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+    public String getExpoPushToken() { return expoPushToken; }
+    public void setExpoPushToken(String expoPushToken) { this.expoPushToken = expoPushToken; }
 }

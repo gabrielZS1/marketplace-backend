@@ -102,8 +102,8 @@ public class BusinessAppointmentController {
     private AppointmentResponseDTO toResponseDTO(Appointment a) {
         return new AppointmentResponseDTO(
                 a.getId(), a.getBusiness().getId(), a.getBusiness().getName(), a.getClient().getName(),
-                a.getEmployee().getUser().getName(), a.getService().getName(), a.getStartsAt(), a.getEndsAt(),
-                a.getStatus(), a.getIsHomeService(), a.getNotes()
+                a.getEmployee().getUser().getName(), a.getEmployee().getId(), a.getService().getName(),
+                a.getStartsAt(), a.getEndsAt(), a.getStatus(), a.getIsHomeService(), a.getNotes()
         );
     }
 }

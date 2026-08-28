@@ -7,11 +7,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface BusinessRepository extends JpaRepository<Business, UUID> {
 
     List<Business> findBySubscriptionStatus(SubscriptionStatus status);
+
+    List<Business> findByOwnerId(UUID ownerId);
+
+    /** Empresa "principal" do dono: a de onboarding concluído mais recente, senão a mais antiga. */
+    Optional<Business> findFirstByOwnerIdOrderByOnboardingCompletedDescCreatedAtAsc(UUID ownerId);
 
     @Query(value = """
         SELECT b.*, 

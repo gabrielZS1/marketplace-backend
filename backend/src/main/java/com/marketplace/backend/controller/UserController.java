@@ -30,4 +30,16 @@ public class UserController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/me/push-token")
+    public ResponseEntity<Void> updatePushToken(@RequestBody Map<String, String> body) {
+        UUID userId = UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        user.setExpoPushToken(body.get("expoPushToken"));
+        userRepository.save(user);
+
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -28,12 +28,9 @@ build/
 ### VS Code ###
 .vscode/
 
-### Configuração sensível ###
-application.properties
-application-*.properties
-!application.properties.example
-
-### Variáveis de ambiente ###
+### Segredos reais ficam só no .env (nunca versionado).
+### application*.properties agora só têm placeholders ${VAR:...} e vão pro git,
+### porque o build (Docker/Render) precisa deles.
 .env
 .env.*
 !.env.example

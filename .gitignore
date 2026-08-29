@@ -1,7 +1,4 @@
-# --- Segredos e config sensível ---
-**/application.properties
-**/application-*.properties
-!**/application.properties.example
+# --- Segredos: só no .env (nunca versionado) ---
 .env
 .env.*
 !.env.example

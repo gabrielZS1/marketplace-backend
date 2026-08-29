@@ -14,6 +14,7 @@ public class BusinessDetailResponseDTO {
     private String description;
     private String logoUrl;
     private String address;
+    private String number;
     private String city;
     private String state;
     private Double latitude;
@@ -43,6 +44,7 @@ public class BusinessDetailResponseDTO {
             String description,
             String logoUrl,
             String address,
+            String number,
             String city,
             String state,
             Double latitude,
@@ -67,6 +69,7 @@ public class BusinessDetailResponseDTO {
         this.description = description;
         this.logoUrl = logoUrl;
         this.address = address;
+        this.number = number;
         this.city = city;
         this.state = state;
         this.latitude = latitude;
@@ -101,6 +104,8 @@ public class BusinessDetailResponseDTO {
     public String getLogoUrl() { return logoUrl; }
 
     public String getAddress() { return address; }
+
+    public String getNumber() { return number; }
 
     public String getCity() { return city; }
 

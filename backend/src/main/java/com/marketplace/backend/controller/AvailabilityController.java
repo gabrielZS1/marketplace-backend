@@ -5,9 +5,11 @@ import com.marketplace.backend.entity.Appointment;
 import com.marketplace.backend.entity.Employee;
 import com.marketplace.backend.entity.WorkingHour;
 import com.marketplace.backend.enums.AppointmentStatus;
+import com.marketplace.backend.entity.BusinessInterval;
 import com.marketplace.backend.entity.TimeBlock;
 import com.marketplace.backend.entity.TimeOff;
 import com.marketplace.backend.repository.AppointmentRepository;
+import com.marketplace.backend.repository.BusinessIntervalRepository;
 import com.marketplace.backend.repository.EmployeeRepository;
 import com.marketplace.backend.repository.ServiceRepository;
 import com.marketplace.backend.repository.TimeBlockRepository;
@@ -34,6 +36,7 @@ public class AvailabilityController {
     private final ServiceRepository serviceRepository;
     private final TimeBlockRepository timeBlockRepository;
     private final TimeOffRepository timeOffRepository;
+    private final BusinessIntervalRepository businessIntervalRepository;
 
     public AvailabilityController(
             EmployeeRepository employeeRepository,
@@ -41,7 +44,8 @@ public class AvailabilityController {
             AppointmentRepository appointmentRepository,
             ServiceRepository serviceRepository,
             TimeBlockRepository timeBlockRepository,
-            TimeOffRepository timeOffRepository
+            TimeOffRepository timeOffRepository,
+            BusinessIntervalRepository businessIntervalRepository
     ) {
         this.employeeRepository = employeeRepository;
         this.workingHourRepository = workingHourRepository;
@@ -49,6 +53,7 @@ public class AvailabilityController {
         this.serviceRepository = serviceRepository;
         this.timeBlockRepository = timeBlockRepository;
         this.timeOffRepository = timeOffRepository;
+        this.businessIntervalRepository = businessIntervalRepository;
     }
 
     @GetMapping("/api/businesses/{businessId}/availability")
@@ -233,6 +238,10 @@ public class AvailabilityController {
                                 businessId, dayEnd, dayStart
                         );
 
+        // Intervalos recorrentes do estabelecimento (ex.: almoço) — valem todo dia.
+        List<BusinessInterval> intervals =
+                businessIntervalRepository.findByBusinessIdOrderByStartTimeAsc(businessId);
+
         Map<UUID, List<TimeOff>> employeeTimeOffs = new LinkedHashMap<>();
         for (Employee employee : employees) {
             employeeTimeOffs.put(
@@ -283,6 +292,22 @@ public class AvailabilityController {
             );
 
             if (businessBlocked) {
+                result.add(new TimeSlotDTO(time.toString(), false, null, null));
+                continue;
+            }
+
+            // -----------------------------------------------------
+            // Intervalo recorrente (almoço etc.) cobre esse horário
+            // -----------------------------------------------------
+
+            final LocalTime slotStartTime = time;
+            final LocalTime slotEndTime = time.plusMinutes(duration);
+            boolean inInterval = intervals.stream().anyMatch(iv ->
+                    slotStartTime.isBefore(iv.getEndTime())
+                            && slotEndTime.isAfter(iv.getStartTime())
+            );
+
+            if (inInterval) {
                 result.add(new TimeSlotDTO(time.toString(), false, null, null));
                 continue;
             }

@@ -10,8 +10,10 @@ public class UserResponseDTO {
     private String role;
     private String address;
     private String photoUrl;
+    private boolean emailVerified;
 
-    public UserResponseDTO(UUID id, String name, String email, String phone, String role, String address, String photoUrl) {
+    public UserResponseDTO(UUID id, String name, String email, String phone, String role, String address,
+                           String photoUrl, boolean emailVerified) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -19,6 +21,7 @@ public class UserResponseDTO {
         this.role = role;
         this.address = address;
         this.photoUrl = photoUrl;
+        this.emailVerified = emailVerified;
     }
 
     public UUID getId() { return id; }
@@ -28,4 +31,5 @@ public class UserResponseDTO {
     public String getRole() { return role; }
     public String getAddress() { return address; }
     public String getPhotoUrl() { return photoUrl; }
+    public boolean isEmailVerified() { return emailVerified; }
 }

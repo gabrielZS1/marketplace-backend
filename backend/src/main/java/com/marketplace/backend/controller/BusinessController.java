@@ -156,7 +156,8 @@ public class BusinessController {
             @PathVariable UUID id
     ) {
 
-        businessAccessService.requireMember(id, getLoggedUserId());
+        // Lista de clientes tem telefone/nome — só o dono do estabelecimento vê.
+        businessAccessService.requireOwner(id, getLoggedUserId());
 
         Map<UUID, ClientResponseDTO> clientsMap =
                 new LinkedHashMap<>();
@@ -264,6 +265,7 @@ public class BusinessController {
         if (request.getInstagramUrl() != null) business.setInstagramUrl(request.getInstagramUrl());
         if (request.getTiktokUrl() != null) business.setTiktokUrl(request.getTiktokUrl());
         if (request.getAddress() != null) business.setAddress(request.getAddress());
+        if (request.getNumber() != null) business.setNumber(request.getNumber());
         if (request.getCity() != null) business.setCity(request.getCity());
         if (request.getState() != null) business.setState(request.getState());
         if (request.getLatitude() != null) business.setLatitude(request.getLatitude());
@@ -324,6 +326,7 @@ public class BusinessController {
                 business.getDescription(),
                 business.getLogoUrl(),
                 business.getAddress(),
+                business.getNumber(),
                 business.getCity(),
                 business.getState(),
                 business.getLatitude(),

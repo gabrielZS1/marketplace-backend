@@ -12,8 +12,9 @@ public class RefreshToken {
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false, unique = true)
-    private String token;
+    // SHA-256 (hex) do token; o valor cru só existe no cliente.
+    @Column(name = "token_hash", nullable = false, unique = true, length = 64)
+    private String tokenHash;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -34,8 +35,8 @@ public class RefreshToken {
     }
 
     public UUID getId() { return id; }
-    public String getToken() { return token; }
-    public void setToken(String token) { this.token = token; }
+    public String getTokenHash() { return tokenHash; }
+    public void setTokenHash(String tokenHash) { this.tokenHash = tokenHash; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
     public OffsetDateTime getExpiresAt() { return expiresAt; }

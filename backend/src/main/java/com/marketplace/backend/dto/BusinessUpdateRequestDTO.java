@@ -10,6 +10,7 @@ public class BusinessUpdateRequestDTO {
     private String description;
 
     private String address;
+    private String number;
     private String city;
     private String state;
 
@@ -56,6 +57,14 @@ public class BusinessUpdateRequestDTO {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public String getNumber() {
+        return number;
+    }
+
+    public void setNumber(String number) {
+        this.number = number;
     }
 
     public String getCity() {

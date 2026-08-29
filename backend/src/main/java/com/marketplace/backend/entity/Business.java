@@ -43,6 +43,9 @@ public class Business {
 
     private String address;
 
+    @Column(length = 20)
+    private String number;
+
     @Column(length = 100)
     private String city;
 
@@ -143,6 +146,8 @@ public class Business {
     public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+    public String getNumber() { return number; }
+    public void setNumber(String number) { this.number = number; }
     public String getCity() { return city; }
     public void setCity(String city) { this.city = city; }
     public String getState() { return state; }

@@ -39,6 +39,9 @@ public class BusinessOnboardingController {
     @Value("${app.subscription.default-trial-days:7}")
     private int defaultTrialDays;
 
+    @Value("${app.auth.require-verified-email:false}")
+    private boolean requireVerifiedEmail;
+
     public BusinessOnboardingController(
             BusinessRepository businessRepository,
             UserRepository userRepository,
@@ -214,6 +217,7 @@ public class BusinessOnboardingController {
                 findOwnedBusiness(id);
 
         business.setAddress(request.getAddress());
+        business.setNumber(request.getNumber());
         business.setCity(request.getCity());
         business.setState(request.getState());
         business.setLatitude(request.getLatitude());
@@ -321,6 +325,7 @@ public class BusinessOnboardingController {
     // ============================================================
 
     @PostMapping("/{id}/complete")
+    @Transactional
     public ResponseEntity<CompleteOnboardingResponseDTO> complete(
             @PathVariable UUID id,
             @Valid @RequestBody CompleteOnboardingRequestDTO request
@@ -328,6 +333,11 @@ public class BusinessOnboardingController {
 
         Business business =
                 findOwnedBusiness(id);
+
+        // Dono precisa ter e-mail confirmado pra concluir (quando a exigência está ligada).
+        if (requireVerifiedEmail && !Boolean.TRUE.equals(business.getOwner().getEmailVerified())) {
+            throw new RuntimeException("Confirme seu e-mail antes de concluir o cadastro.");
+        }
 
         /*
          * Verifica se todas as informações necessárias
@@ -385,36 +395,28 @@ public class BusinessOnboardingController {
                                     )
                             );
 
-            if (
-                    Boolean.TRUE.equals(
-                            promo.getRedeemed()
-                    )
-            ) {
+            // Resgate atômico — evita dois onboardings resgatarem o mesmo código.
+            int redeemed = promoCodeRepository.redeem(
+                    promo.getId(), business.getId(), OffsetDateTime.now()
+            );
 
-                throw new RuntimeException(
-                        "Este código promocional já foi utilizado"
-                );
+            boolean alreadyMine = false;
+            if (redeemed == 0) {
+                if (promoCodeRepository.existsByIdAndRedeemedByBusinessId(
+                        promo.getId(), business.getId())) {
+                    alreadyMine = true; // retry do mesmo dono (toque duplo) — ok
+                } else {
+                    throw new RuntimeException("Este código promocional já foi utilizado");
+                }
             }
-
-            int freeDays = promo.getFreeDays();
-
-            promo.setRedeemed(true);
-
-            promo.setRedeemedByBusinessId(
-                    business.getId()
-            );
-
-            promo.setRedeemedAt(
-                    OffsetDateTime.now()
-            );
-
-            promoCodeRepository.save(promo);
 
             // Trial é 100% controlado por nós. A assinatura no Mercado Pago só é
             // criada quando o cliente for pagar (tela de renovação / POST /subscribe).
-            business.setTrialEndsAt(
-                    trialAnchor.plusDays(freeDays)
-            );
+            if (!alreadyMine) {
+                business.setTrialEndsAt(
+                        trialAnchor.plusDays(promo.getFreeDays())
+                );
+            }
 
             business.setSubscriptionStatus(
                     SubscriptionStatus.TRIAL

@@ -73,17 +73,21 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/register",
                                 "/api/auth/register-business-owner",
+                                "/api/auth/google",
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
                                 "/error"
                         ).permitAll()
 
 
                         /* ================================
-                           ARQUIVOS ESTÁTICOS (fotos)
+                           ARQUIVOS ESTÁTICOS (fotos, páginas legais)
                         ================================= */
 
                         .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/legal/**").permitAll()
 
 
                         /* ================================

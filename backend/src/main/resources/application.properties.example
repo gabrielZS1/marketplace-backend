@@ -1,8 +1,12 @@
 spring.application.name=backend
 
-spring.datasource.url=jdbc:postgresql://localhost:5433/marketplace
-spring.datasource.username=marketplace_admin
-spring.datasource.password=COLOQUE_SUA_SENHA_AQUI
+# Copie para application.properties (ignorado pelo git) e preencha,
+# ou defina tudo por variável de ambiente. Os ${VAR:default} abaixo
+# já leem do ambiente automaticamente.
+
+spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5433/marketplace}
+spring.datasource.username=${DB_USERNAME:marketplace_admin}
+spring.datasource.password=${DB_PASSWORD:COLOQUE_SUA_SENHA_AQUI}
 spring.datasource.driver-class-name=org.postgresql.Driver
 
 spring.jpa.hibernate.ddl-auto=validate
@@ -12,5 +16,45 @@ spring.flyway.enabled=true
 spring.flyway.locations=classpath:db/migration
 
 server.port=8082
+server.forward-headers-strategy=framework
 
-app.jwt.secret=COLOQUE_SUA_CHAVE_SECRETA_AQUI
+server.error.include-message=never
+server.error.include-stacktrace=never
+server.error.include-binding-errors=never
+server.error.include-exception=false
+
+# Mercado Pago (sandbox: TEST-...  produção: APP_USR-...)
+mercadopago.access-token=${MP_ACCESS_TOKEN:CHANGE_ME_MP_ACCESS_TOKEN}
+mercadopago.webhook-secret=${MP_WEBHOOK_SECRET:CHANGE_ME_MP_WEBHOOK_SECRET}
+
+app.base-url=${APP_BASE_URL:http://localhost:8082}
+app.subscription.grace-period-days=4
+app.subscription.default-trial-days=7
+app.admin-email=${ADMIN_EMAIL:admin@example.com}
+
+# JWT (>= 64 chars aleatórios: openssl rand -hex 64)
+app.jwt.secret=${JWT_SECRET:COLOQUE_SUA_CHAVE_SECRETA_AQUI}
+
+app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:8081,http://localhost:19006}
+
+app.ratelimit.enabled=${RATELIMIT_ENABLED:true}
+app.ratelimit.behind-proxy=${RATELIMIT_BEHIND_PROXY:false}
+
+# E-mail transacional (Resend). Vazio = e-mails só logados.
+resend.api-key=${RESEND_API_KEY:}
+resend.from=${RESEND_FROM:Glowly <onboarding@resend.dev>}
+
+# "Entrar com Google": client IDs OAuth aceitos (Web,iOS,Android), separados por vírgula.
+google.oauth.client-ids=${GOOGLE_OAUTH_CLIENT_IDS:}
+
+# Exigir e-mail verificado para concluir o onboarding do dono.
+app.auth.require-verified-email=${REQUIRE_VERIFIED_EMAIL:false}
+
+# CAPTCHA no cadastro (Cloudflare Turnstile).
+turnstile.enabled=${TURNSTILE_ENABLED:false}
+turnstile.secret-key=${TURNSTILE_SECRET_KEY:}
+
+spring.servlet.multipart.enabled=true
+spring.servlet.multipart.max-file-size=5MB
+spring.servlet.multipart.max-request-size=6MB
+app.upload.dir=${UPLOAD_DIR:uploads}

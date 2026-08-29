@@ -8,6 +8,9 @@ public class AddressRequestDTO {
     @NotBlank
     private String address;
 
+    @Size(max = 20)
+    private String number;
+
     @NotBlank
     private String city;
 
@@ -23,6 +26,8 @@ public class AddressRequestDTO {
 
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+    public String getNumber() { return number; }
+    public void setNumber(String number) { this.number = number; }
     public String getCity() { return city; }
     public void setCity(String city) { this.city = city; }
     public String getState() { return state; }

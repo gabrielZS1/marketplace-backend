@@ -31,6 +31,30 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
     List<Appointment> findByBusinessId(UUID businessId);
 
+    @Query("""
+        SELECT a FROM Appointment a
+        JOIN FETCH a.service
+        JOIN FETCH a.employee e
+        JOIN FETCH e.user
+        JOIN FETCH a.client
+        WHERE a.business.id = :businessId
+          AND a.startsAt >= :from
+          AND a.startsAt < :to
+    """)
+    List<Appointment> findForStats(
+            @Param("businessId") UUID businessId,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to
+    );
+
+    @Query("""
+        SELECT a.client.id, MIN(a.startsAt)
+        FROM Appointment a
+        WHERE a.business.id = :businessId
+        GROUP BY a.client.id
+    """)
+    List<Object[]> findFirstAppointmentPerClient(@Param("businessId") UUID businessId);
+
     List<Appointment> findByEmployeeIdAndStartsAtBetween(
             UUID employeeId,
             OffsetDateTime from,

@@ -9,6 +9,7 @@ import com.marketplace.backend.entity.Employee;
 import com.marketplace.backend.entity.User;
 import com.marketplace.backend.enums.AppointmentStatus;
 import com.marketplace.backend.repository.AppointmentRepository;
+import com.marketplace.backend.repository.BusinessIntervalRepository;
 import com.marketplace.backend.repository.BusinessRepository;
 import com.marketplace.backend.repository.EmployeeRepository;
 import com.marketplace.backend.repository.ServiceRepository;
@@ -22,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -41,6 +43,7 @@ public class AppointmentController {
     private final WorkingHourRepository workingHourRepository;
     private final TimeBlockRepository timeBlockRepository;
     private final TimeOffRepository timeOffRepository;
+    private final BusinessIntervalRepository businessIntervalRepository;
     private final PushNotificationService pushNotificationService;
     private final com.marketplace.backend.service.BusinessAccessService businessAccessService;
 
@@ -53,6 +56,7 @@ public class AppointmentController {
             WorkingHourRepository workingHourRepository,
             TimeBlockRepository timeBlockRepository,
             TimeOffRepository timeOffRepository,
+            BusinessIntervalRepository businessIntervalRepository,
             PushNotificationService pushNotificationService,
             com.marketplace.backend.service.BusinessAccessService businessAccessService
     ) {
@@ -65,6 +69,7 @@ public class AppointmentController {
         this.businessAccessService = businessAccessService;
         this.timeBlockRepository = timeBlockRepository;
         this.timeOffRepository = timeOffRepository;
+        this.businessIntervalRepository = businessIntervalRepository;
         this.pushNotificationService = pushNotificationService;
     }
 
@@ -108,6 +113,20 @@ public class AppointmentController {
                 .isEmpty()) {
             throw new RuntimeException(
                     "O estabelecimento está indisponível neste horário"
+            );
+        }
+
+        // Intervalo recorrente do estabelecimento (ex.: almoço)
+        LocalTime apptStart = startsAt.toLocalTime();
+        LocalTime apptEnd = endsAt.toLocalTime();
+        boolean hitsInterval = businessIntervalRepository
+                .findByBusinessIdOrderByStartTimeAsc(business.getId())
+                .stream()
+                .anyMatch(iv -> apptStart.isBefore(iv.getEndTime())
+                        && apptEnd.isAfter(iv.getStartTime()));
+        if (hitsInterval) {
+            throw new RuntimeException(
+                    "O estabelecimento está em intervalo neste horário"
             );
         }
 

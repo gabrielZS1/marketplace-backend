@@ -2,6 +2,7 @@ package com.marketplace.backend.config;
 
 import com.marketplace.backend.security.RateLimitFilter;
 import com.marketplace.backend.security.RateLimiter;
+import com.marketplace.backend.security.UploadsHeaderFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +26,16 @@ public class FilterConfig {
                 new FilterRegistrationBean<>(new RateLimitFilter(rateLimiter, enabled, behindProxy));
         registration.addUrlPatterns("/api/*");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
+    }
+
+    /** Força download (nunca renderização) dos arquivos em /uploads/**. */
+    @Bean
+    public FilterRegistrationBean<UploadsHeaderFilter> uploadsHeaderFilter() {
+        FilterRegistrationBean<UploadsHeaderFilter> registration =
+                new FilterRegistrationBean<>(new UploadsHeaderFilter());
+        registration.addUrlPatterns("/uploads/*");
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
         return registration;
     }
 }

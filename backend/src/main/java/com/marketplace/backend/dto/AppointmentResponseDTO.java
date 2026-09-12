@@ -9,6 +9,7 @@ public class AppointmentResponseDTO {
     private UUID businessId;
     private String businessName;
     private String clientName;
+    private String clientPhone;
     private String employeeName;
     private UUID employeeId;
     private String serviceName;
@@ -18,13 +19,14 @@ public class AppointmentResponseDTO {
     private Boolean isHomeService;
     private String notes;
 
-    public AppointmentResponseDTO(UUID id, UUID businessId, String businessName, String clientName,
+    public AppointmentResponseDTO(UUID id, UUID businessId, String businessName, String clientName, String clientPhone,
                                   String employeeName, UUID employeeId, String serviceName,
                                   OffsetDateTime startsAt, OffsetDateTime endsAt, AppointmentStatus status, Boolean isHomeService, String notes) {
         this.id = id;
         this.businessId = businessId;
         this.businessName = businessName;
         this.clientName = clientName;
+        this.clientPhone = clientPhone;
         this.employeeName = employeeName;
         this.employeeId = employeeId;
         this.serviceName = serviceName;
@@ -39,6 +41,7 @@ public class AppointmentResponseDTO {
     public UUID getBusinessId() { return businessId; }
     public String getBusinessName() { return businessName; }
     public String getClientName() { return clientName; }
+    public String getClientPhone() { return clientPhone; }
     public String getEmployeeName() { return employeeName; }
     public UUID getEmployeeId() { return employeeId; }
     public String getServiceName() { return serviceName; }

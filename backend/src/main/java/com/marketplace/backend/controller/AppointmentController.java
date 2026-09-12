@@ -504,6 +504,7 @@ public class AppointmentController {
                 a.getBusiness().getId(),
                 a.getBusiness().getName(),
                 a.getClient().getName(),
+                a.getClient().getPhone(),
                 a.getEmployee().getUser().getName(),
                 a.getEmployee().getId(),
                 a.getService().getName(),

@@ -1,5 +1,7 @@
 package com.marketplace.backend.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -8,13 +10,20 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.UUID;
 
 @Service
 public class FileStorageService {
+
+    private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
 
     private static final long MAX_BYTES = 5L * 1024 * 1024; // 5 MB
 
@@ -23,6 +32,18 @@ public class FileStorageService {
 
     @Value("${app.base-url}")
     private String baseUrl;
+
+    // Supabase Storage (opcional). Vazio = grava no disco.
+    @Value("${app.storage.supabase-url:}")
+    private String supabaseUrl;
+
+    @Value("${app.storage.supabase-secret-key:}")
+    private String supabaseSecretKey;
+
+    @Value("${app.storage.supabase-bucket:uploads}")
+    private String supabaseBucket;
+
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public String store(MultipartFile file, String subfolder) {
         if (file == null || file.isEmpty()) {
@@ -58,6 +79,12 @@ public class FileStorageService {
         String safeSubfolder = sanitizeSubfolder(subfolder);
         String fileName = UUID.randomUUID() + extension;
 
+        // Com SUPABASE_URL + SUPABASE_SECRET_KEY configurados, a foto vai para o Supabase
+        // Storage (não some em deploy/reinício). Sem eles, grava no disco, como antes.
+        if (supabaseEnabled()) {
+            return storeInSupabase(bytes, safeSubfolder, fileName, extension);
+        }
+
         try {
             Path folderPath = Paths.get(uploadDir).resolve(safeSubfolder).normalize();
             Path base = Paths.get(uploadDir).toAbsolutePath().normalize();
@@ -71,6 +98,52 @@ public class FileStorageService {
         }
 
         return publicBaseUrl() + "/uploads/" + safeSubfolder + "/" + fileName;
+    }
+
+    // ------------------------------------------------------------------
+    // Supabase Storage
+    // ------------------------------------------------------------------
+
+    private boolean supabaseEnabled() {
+        return supabaseUrl != null && !supabaseUrl.isBlank()
+                && supabaseSecretKey != null && !supabaseSecretKey.isBlank();
+    }
+
+    private String storeInSupabase(byte[] bytes, String safeSubfolder, String fileName, String extension) {
+        String base = supabaseUrl.trim().replaceAll("/+$", "");
+        String objectPath = safeSubfolder + "/" + fileName;
+        String contentType = ".png".equals(extension) ? "image/png" : "image/jpeg";
+
+        HttpRequest.Builder request = HttpRequest.newBuilder()
+                .uri(URI.create(base + "/storage/v1/object/" + supabaseBucket + "/" + objectPath))
+                .timeout(Duration.ofSeconds(30))
+                .header("apikey", supabaseSecretKey)
+                .header("Content-Type", contentType)
+                .header("x-upsert", "false")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(bytes));
+
+        // Chave legada (service_role) é um JWT e também vai em Authorization. A chave nova
+        // (sb_secret_...) NÃO é JWT e só pode ir no header apikey.
+        if (supabaseSecretKey.startsWith("eyJ")) {
+            request.header("Authorization", "Bearer " + supabaseSecretKey);
+        }
+
+        try {
+            HttpResponse<String> response = httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() / 100 != 2) {
+                log.error("Supabase Storage recusou o upload de {}: HTTP {} {}",
+                        objectPath, response.statusCode(), response.body());
+                throw new RuntimeException("Não foi possível salvar a imagem agora. Tente novamente em instantes.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Não foi possível salvar a imagem agora. Tente novamente em instantes.");
+        } catch (IOException e) {
+            log.error("Falha de rede ao enviar {} para o Supabase Storage", objectPath, e);
+            throw new RuntimeException("Não foi possível salvar a imagem agora. Tente novamente em instantes.");
+        }
+
+        return base + "/storage/v1/object/public/" + supabaseBucket + "/" + objectPath;
     }
 
     /**

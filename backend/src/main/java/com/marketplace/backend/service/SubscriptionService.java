@@ -20,6 +20,8 @@ import java.util.Map;
 @Service
 public class SubscriptionService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SubscriptionService.class);
+
     private final PreapprovalClient preapprovalClient = new PreapprovalClient();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newHttpClient();
@@ -87,6 +89,53 @@ public class SubscriptionService {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Erro ao comunicar com o Mercado Pago", e);
+        }
+    }
+
+    /**
+     * Altera o valor mensal de uma assinatura existente no Mercado Pago (sem cancelar nem
+     * recriar). A mudança vale a partir da próxima cobrança; o pagador é avisado pelo MP.
+     * Lança RuntimeException com mensagem amigável se o MP recusar — quem chama não deve
+     * alterar nada local nesse caso.
+     */
+    public void updateAmount(String preapprovalId, java.math.BigDecimal newAmount) {
+        if (preapprovalId == null || newAmount == null) {
+            throw new RuntimeException("Assinatura inválida para alteração.");
+        }
+
+        Map<String, Object> autoRecurring = new LinkedHashMap<>();
+        autoRecurring.put("transaction_amount", newAmount);
+        autoRecurring.put("currency_id", "BRL");
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("auto_recurring", autoRecurring);
+
+        try {
+            String json = objectMapper.writeValueAsString(body);
+
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.mercadopago.com/preapproval/" + preapprovalId))
+                    .header("Authorization", "Bearer " + accessToken)
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 400) {
+                log.error("Mercado Pago recusou alterar o valor da assinatura {}: HTTP {} {}",
+                        preapprovalId, response.statusCode(), response.body());
+                throw new RuntimeException(
+                        "Não foi possível atualizar sua assinatura no Mercado Pago agora. Tente novamente em instantes.");
+            }
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Não foi possível falar com o Mercado Pago agora. Tente novamente.");
+        } catch (Exception e) {
+            log.error("Erro ao alterar valor da assinatura {}", preapprovalId, e);
+            throw new RuntimeException("Não foi possível falar com o Mercado Pago agora. Tente novamente.");
         }
     }
 

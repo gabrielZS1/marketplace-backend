@@ -9,10 +9,12 @@ public class EmployeeResponseDTO {
     private String specialty;
     private Boolean active;
     private Double rating;
+    private String photoUrl;
 
-    public EmployeeResponseDTO(UUID id, String name, String bio, String specialty, Boolean active, Double rating) {
+    public EmployeeResponseDTO(UUID id, String name, String bio, String specialty, Boolean active, Double rating,
+                               String photoUrl) {
         this.id = id; this.name = name; this.bio = bio; this.specialty = specialty;
-        this.active = active; this.rating = rating;
+        this.active = active; this.rating = rating; this.photoUrl = photoUrl;
     }
 
     public UUID getId() { return id; }
@@ -21,4 +23,5 @@ public class EmployeeResponseDTO {
     public String getSpecialty() { return specialty; }
     public Boolean getActive() { return active; }
     public Double getRating() { return rating; }
+    public String getPhotoUrl() { return photoUrl; }
 }

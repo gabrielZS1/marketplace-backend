@@ -16,8 +16,10 @@ import com.marketplace.backend.repository.EmployeeRepository;
 import com.marketplace.backend.repository.ReviewRepository;
 import com.marketplace.backend.repository.UserRepository;
 import com.marketplace.backend.repository.WorkingHourRepository;
+import com.marketplace.backend.service.FileStorageService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +43,7 @@ public class EmployeeController {
     private final PasswordEncoder passwordEncoder;
     private final ReviewRepository reviewRepository;
     private final WorkingHourRepository workingHourRepository;
+    private final FileStorageService fileStorageService;
 
     public EmployeeController(
             EmployeeRepository employeeRepository,
@@ -48,8 +51,10 @@ public class EmployeeController {
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             ReviewRepository reviewRepository,
-            WorkingHourRepository workingHourRepository
+            WorkingHourRepository workingHourRepository,
+            FileStorageService fileStorageService
     ) {
+        this.fileStorageService = fileStorageService;
         this.employeeRepository = employeeRepository;
         this.businessRepository = businessRepository;
         this.userRepository = userRepository;
@@ -433,6 +438,45 @@ public class EmployeeController {
     }
 
     // =========================================================
+    // FOTO DO FUNCIONÁRIO
+    // O próprio funcionário (ao logar) ou o dono do estabelecimento.
+    // =========================================================
+
+    @PostMapping(value = "/{employeeId}/photo", consumes = "multipart/form-data")
+    public ResponseEntity<java.util.Map<String, String>> uploadPhoto(
+            @PathVariable UUID businessId,
+            @PathVariable UUID employeeId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        Business business = businessRepository.findById(businessId)
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada"));
+
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado"));
+
+        if (!employee.getBusiness().getId().equals(businessId) || !Boolean.TRUE.equals(employee.getActive())) {
+            throw new RuntimeException("Funcionário não encontrado");
+        }
+
+        UUID loggedUserId = UUID.fromString(
+                SecurityContextHolder.getContext().getAuthentication().getName());
+        boolean isOwner = business.getOwner().getId().equals(loggedUserId);
+        // Employee.id == User.id (@MapsId): o funcionário logado é "ele mesmo".
+        boolean isSelf = employee.getId().equals(loggedUserId);
+        if (!isOwner && !isSelf) {
+            throw new RuntimeException("Você não tem permissão para alterar esta foto");
+        }
+
+        String photoUrl = fileStorageService.store(file, "employees/" + employeeId);
+
+        User user = employee.getUser();
+        user.setPhotoUrl(photoUrl);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(java.util.Map.of("photoUrl", photoUrl));
+    }
+
+    // =========================================================
     // BUSCAR FUNCIONÁRIO E VALIDAR PERMISSÃO
     // =========================================================
 
@@ -605,7 +649,8 @@ public class EmployeeController {
                 e.getBio(),
                 e.getSpecialty(),
                 e.getActive(),
-                rating
+                rating,
+                e.getUser().getPhotoUrl()
         );
     }
 }

@@ -94,6 +94,14 @@ public class AppointmentController {
 
         Business business = service.getBusiness();
 
+        // Estabelecimento suspenso / com cadastro incompleto não recebe reservas.
+        if (!Boolean.TRUE.equals(business.getActive())
+                || !Boolean.TRUE.equals(business.getOnboardingCompleted())) {
+            throw new RuntimeException(
+                    "Este estabelecimento não está aceitando agendamentos no momento"
+            );
+        }
+
         OffsetDateTime startsAt = request.getStartsAt()
                 .withOffsetSameInstant(OFFSET);
 
@@ -393,6 +401,21 @@ public class AppointmentController {
 
             throw new RuntimeException(
                     "Não é possível cancelar um agendamento concluído"
+            );
+        }
+
+        // O cliente só cancela o que ainda não aconteceu (pendente/confirmado e no futuro).
+        if (appointment.getStatus() != AppointmentStatus.PENDING
+                && appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+
+            throw new RuntimeException(
+                    "Este agendamento não pode mais ser cancelado"
+            );
+        }
+
+        if (!appointment.getStartsAt().isAfter(OffsetDateTime.now(OFFSET))) {
+            throw new RuntimeException(
+                    "Este horário já começou ou passou e não pode mais ser cancelado"
             );
         }
 

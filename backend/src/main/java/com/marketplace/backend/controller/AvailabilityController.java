@@ -79,13 +79,9 @@ public class AvailabilityController {
         // FUNCIONÁRIOS ATIVOS DO ESTABELECIMENTO
         // =========================================================
 
-        List<Employee> employees = employeeRepository.findAll()
+        List<Employee> employees = employeeRepository
+                .findByBusinessIdAndActiveTrue(businessId)
                 .stream()
-                .filter(e ->
-                        e.getBusiness() != null
-                                && e.getBusiness().getId().equals(businessId)
-                )
-                .filter(e -> Boolean.TRUE.equals(e.getActive()))
                 .filter(e ->
                         employeeId == null
                                 || e.getId().equals(employeeId)
@@ -95,9 +91,6 @@ public class AvailabilityController {
         if (employees.isEmpty()) {
             return List.of();
         }
-
-        System.out.println("### employeeId recebido: " + employeeId);
-        System.out.println("### employees após filtro: " + employees.stream().map(Employee::getId).toList());
 
         // =========================================================
         // DIA DA SEMANA
@@ -260,6 +253,8 @@ public class AvailabilityController {
         List<TimeSlotDTO> result =
                 new ArrayList<>();
 
+        Map<UUID, List<Appointment>> appointmentsByEmployee = new HashMap<>();
+
         for (LocalTime time : candidateTimes) {
 
             OffsetDateTime slotStart =
@@ -349,23 +344,17 @@ public class AvailabilityController {
                 // BUSCAR AGENDAMENTOS DO FUNCIONÁRIO
                 // =================================================
 
+                // (buscado uma única vez por profissional — antes era 1 consulta por horário)
                 List<Appointment> appointments =
-                        appointmentRepository
-                                .findByEmployeeIdAndStartsAtBetween(
-                                        employee.getId(),
-
-                                        OffsetDateTime.of(
-                                                date,
-                                                LocalTime.MIN,
-                                                OFFSET
-                                        ),
-
-                                        OffsetDateTime.of(
-                                                date,
-                                                LocalTime.MAX,
-                                                OFFSET
+                        appointmentsByEmployee.computeIfAbsent(
+                                employee.getId(),
+                                id -> appointmentRepository
+                                        .findByEmployeeIdAndStartsAtBetween(
+                                                id,
+                                                dayStart,
+                                                dayEnd
                                         )
-                                );
+                        );
 
                 // =================================================
                 // VERIFICAR CONFLITO

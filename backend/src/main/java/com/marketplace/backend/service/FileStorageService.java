@@ -70,7 +70,26 @@ public class FileStorageService {
             throw new RuntimeException("Erro ao salvar a imagem.");
         }
 
-        return baseUrl + "/uploads/" + safeSubfolder + "/" + fileName;
+        return publicBaseUrl() + "/uploads/" + safeSubfolder + "/" + fileName;
+    }
+
+    /**
+     * Origem pública da API: a da requisição em andamento (atrás do proxy do Render vem
+     * pelos headers X-Forwarded-*), e só se não houver requisição usa o app.base-url.
+     * Antes valia sempre o APP_BASE_URL — se ele ficasse com o host errado, toda foto
+     * nova era gravada com uma URL que não abre.
+     */
+    private String publicBaseUrl() {
+        try {
+            String fromRequest = org.springframework.web.servlet.support.ServletUriComponentsBuilder
+                    .fromCurrentContextPath().build().toUriString();
+            if (fromRequest != null && !fromRequest.isBlank()) {
+                return fromRequest.replaceAll("/+$", "");
+            }
+        } catch (IllegalStateException ignored) {
+            // fora de uma requisição HTTP
+        }
+        return baseUrl.replaceAll("/+$", "");
     }
 
     /** Extensão a partir dos primeiros bytes (magic number). null se não for JPG/PNG. */

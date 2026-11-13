@@ -72,6 +72,35 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponseDTO("Requisição inválida."));
     }
 
+    // Erros do cliente que antes caíam no genérico "Erro interno" (500).
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUploadTooLarge(Exception ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(new ErrorResponseDTO("Imagem muito grande (máximo 5 MB)."));
+    }
+
+    @ExceptionHandler({
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+            org.springframework.web.multipart.MultipartException.class
+    })
+    public ResponseEntity<ErrorResponseDTO> handleBadUpload(Exception ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponseDTO("Envie uma imagem válida."));
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponseDTO> handleMethodNotSupported(Exception ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(new ErrorResponseDTO("Operação não suportada."));
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponseDTO> handleNoResource(Exception ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponseDTO("Recurso não encontrado."));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception ex) {
         log.error("Erro não tratado", ex);

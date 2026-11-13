@@ -4,7 +4,9 @@ import com.marketplace.backend.entity.Business;
 import com.marketplace.backend.entity.Employee;
 import com.marketplace.backend.repository.BusinessRepository;
 import com.marketplace.backend.repository.EmployeeRepository;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -25,12 +27,22 @@ public class BusinessAccessService {
         this.employeeRepository = employeeRepository;
     }
 
-    /** O estabelecimento de quem está logado — dono OU funcionário ativo. */
+    /**
+     * O estabelecimento de quem está logado — dono OU funcionário ativo.
+     *
+     * Roda numa transação e devolve a entidade já carregada (sem proxy lazy): o
+     * SubscriptionAccessInterceptor chama isto antes do controller, quando ainda não há
+     * sessão do Hibernate aberta. Com o proxy de Employee.getBusiness() isso estourava
+     * LazyInitializationException (HTTP 500) em toda requisição de funcionário.
+     */
+    @Transactional(readOnly = true)
     public Optional<Business> resolveBusiness(UUID userId) {
         Optional<Business> owned = businessRepository
                 .findFirstByOwnerIdOrderByOnboardingCompletedDescCreatedAtAsc(userId);
         if (owned.isPresent()) return owned;
-        return employeeRepository.findByIdAndActiveTrue(userId).map(Employee::getBusiness);
+        return employeeRepository.findByIdAndActiveTrue(userId)
+                .map(Employee::getBusiness)
+                .map(b -> Hibernate.unproxy(b, Business.class));
     }
 
     public boolean isOwner(Business business, UUID userId) {

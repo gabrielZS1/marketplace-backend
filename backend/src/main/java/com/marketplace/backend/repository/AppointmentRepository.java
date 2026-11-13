@@ -3,10 +3,12 @@ package com.marketplace.backend.repository;
 import com.marketplace.backend.entity.Appointment;
 import com.marketplace.backend.enums.AppointmentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +27,23 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             @Param("startsAt") OffsetDateTime startsAt,
             @Param("endsAt") OffsetDateTime endsAt,
             @Param("cancelledStatus") AppointmentStatus cancelledStatus
+    );
+
+    /**
+     * Fecha de uma vez os agendamentos cujo horário de término já passou:
+     * move de {@code from} para {@code to}. Devolve quantos foram alterados.
+     */
+    @Modifying
+    @Query("""
+        UPDATE Appointment a
+        SET a.status = :to, a.updatedAt = :now
+        WHERE a.status IN :from
+          AND a.endsAt < :now
+    """)
+    int closeEnded(
+            @Param("from") Collection<AppointmentStatus> from,
+            @Param("to") AppointmentStatus to,
+            @Param("now") OffsetDateTime now
     );
 
     List<Appointment> findByClientId(UUID clientId);

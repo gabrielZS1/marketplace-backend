@@ -262,6 +262,7 @@ public class BusinessController {
         if (request.getName() != null) business.setName(request.getName());
         if (request.getDescription() != null) business.setDescription(request.getDescription());
         if (request.getPhone() != null) business.setPhone(request.getPhone());
+        if (request.getWhatsappUrl() != null) business.setWhatsappUrl(request.getWhatsappUrl());
         if (request.getInstagramUrl() != null) business.setInstagramUrl(request.getInstagramUrl());
         if (request.getTiktokUrl() != null) business.setTiktokUrl(request.getTiktokUrl());
         if (request.getAddress() != null) business.setAddress(request.getAddress());
@@ -344,6 +345,7 @@ public class BusinessController {
                 business.getWorkLocationType(),
 
                 business.getPhone(),
+                business.getWhatsappUrl(),
                 business.getInstagramUrl(),
                 business.getTiktokUrl(),
 

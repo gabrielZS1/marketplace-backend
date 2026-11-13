@@ -78,6 +78,9 @@ public class Business {
     @Column(length = 20)
     private String phone;
 
+    @Column(name = "whatsapp_url", length = 255)
+    private String whatsappUrl;
+
     @Column(name = "instagram_url", length = 255)
     private String instagramUrl;
 
@@ -166,6 +169,8 @@ public class Business {
     public void setFeatured(Boolean featured) { this.featured = featured; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+    public String getWhatsappUrl() { return whatsappUrl; }
+    public void setWhatsappUrl(String whatsappUrl) { this.whatsappUrl = whatsappUrl; }
     public String getInstagramUrl() { return instagramUrl; }
     public void setInstagramUrl(String instagramUrl) { this.instagramUrl = instagramUrl; }
     public String getTiktokUrl() { return tiktokUrl; }

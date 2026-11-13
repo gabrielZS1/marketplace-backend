@@ -30,6 +30,7 @@ public class BusinessDetailResponseDTO {
     private WorkLocationType workLocationType;
 
     private String phone;
+    private String whatsappUrl;
     private String instagramUrl;
     private String tiktokUrl;
 
@@ -57,6 +58,7 @@ public class BusinessDetailResponseDTO {
             Boolean featured,
             WorkLocationType workLocationType,
             String phone,
+            String whatsappUrl,
             String instagramUrl,
             String tiktokUrl,
             Boolean hasParking,
@@ -85,6 +87,7 @@ public class BusinessDetailResponseDTO {
         this.workLocationType = workLocationType;
 
         this.phone = phone;
+        this.whatsappUrl = whatsappUrl;
         this.instagramUrl = instagramUrl;
         this.tiktokUrl = tiktokUrl;
 
@@ -134,6 +137,10 @@ public class BusinessDetailResponseDTO {
     }
 
     public String getPhone() { return phone; }
+
+    public String getWhatsappUrl() {
+        return whatsappUrl;
+    }
 
     public String getInstagramUrl() {
         return instagramUrl;

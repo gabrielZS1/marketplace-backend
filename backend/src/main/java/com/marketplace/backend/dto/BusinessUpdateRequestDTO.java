@@ -18,6 +18,7 @@ public class BusinessUpdateRequestDTO {
     private Double longitude;
 
     private String phone;
+    private String whatsappUrl;
     private String instagramUrl;
     private String tiktokUrl;
 
@@ -105,6 +106,14 @@ public class BusinessUpdateRequestDTO {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getWhatsappUrl() {
+        return whatsappUrl;
+    }
+
+    public void setWhatsappUrl(String whatsappUrl) {
+        this.whatsappUrl = whatsappUrl;
     }
 
     public String getInstagramUrl() {

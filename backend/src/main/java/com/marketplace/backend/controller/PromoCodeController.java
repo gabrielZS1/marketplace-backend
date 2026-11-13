@@ -105,7 +105,16 @@ public class PromoCodeController {
         return code;
     }
 
+    // Valor padrão do application.properties quando ADMIN_EMAIL não está definido.
+    private static final String DEFAULT_ADMIN_EMAIL = "admin@example.com";
+
     private void checkIsAdmin() {
+        // Sem ADMIN_EMAIL de verdade, qualquer pessoa poderia criar uma conta com o e-mail
+        // padrão e passar a gerar códigos promocionais (testes grátis) à vontade.
+        if (adminEmail == null || adminEmail.isBlank() || DEFAULT_ADMIN_EMAIL.equalsIgnoreCase(adminEmail.trim())) {
+            throw new RuntimeException("Acesso negado");
+        }
+
         UUID userId = UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));

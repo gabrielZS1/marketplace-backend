@@ -12,16 +12,21 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.marketplace.backend.repository.UserRepository;
+
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, UserRepository userRepository) {
         this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -46,6 +51,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             String userId = claims.getSubject();
             String role = claims.get("role", String.class);
+
+            // O token é assinado e ainda não expirou, mas a conta pode ter sido excluída ou
+            // desativada depois (o token vale por ~30 min). Sem esta checagem, quem excluiu a
+            // conta continuava usando a API até o token vencer.
+            if (userId != null && !userId.isBlank() && !userRepository.existsByIdAndActiveTrue(UUID.fromString(userId))) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             if (userId != null && !userId.isBlank() && role != null && !role.isBlank()) {
 

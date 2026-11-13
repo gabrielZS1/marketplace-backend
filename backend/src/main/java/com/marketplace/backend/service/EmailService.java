@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.Map;
 
@@ -24,19 +25,31 @@ public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
-    private final WebClient webClient = WebClient.builder()
-            .baseUrl("https://api.resend.com")
-            .build();
+    private final WebClient webClient;
 
     private final String apiKey;
     private final String from;
+    private final String adminEmail;
 
     public EmailService(
             @Value("${resend.api-key:}") String apiKey,
-            @Value("${resend.from:Glowly <onboarding@resend.dev>}") String from
+            @Value("${resend.from:Glowly <onboarding@resend.dev>}") String from,
+            @Value("${app.admin-email:}") String adminEmail,
+            @Value("${resend.base-url:https://api.resend.com}") String baseUrl
     ) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.from = from;
+        this.adminEmail = adminEmail == null ? "" : adminEmail.trim();
+        this.webClient = WebClient.builder().baseUrl(baseUrl).build();
+    }
+
+    /** Aviso interno para o administrador (ex.: nova denúncia). Não faz nada se não houver e-mail de admin. */
+    public void sendAdminNotice(String subject, String html) {
+        if (adminEmail.isBlank()) {
+            log.warn("[EmailService] ADMIN_EMAIL não configurado. Aviso NÃO enviado — assunto: {}", subject);
+            return;
+        }
+        send(adminEmail, subject, html);
     }
 
     public boolean isConfigured() {
@@ -59,6 +72,23 @@ public class EmailService {
                         "Use o código abaixo para confirmar seu e-mail. Ele expira em 15 minutos.",
                         code,
                         "Se não foi você que criou a conta, ignore este e-mail."));
+    }
+
+    /** Aviso de cobrança ao dono do estabelecimento, com o link da página web de assinatura. */
+    public void sendSubscriptionNotice(String to, String subject, String title, String message, String link) {
+        if (!isConfigured()) {
+            log.warn("[EmailService] Resend não configurado. Aviso de cobrança NÃO enviado para {} — {}", to, subject);
+            return;
+        }
+        String safeLink = HtmlUtils.htmlEscape(link);
+        send(to, subject, """
+                <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#1B1917">
+                  <h2 style="font-weight:600">%s</h2>
+                  <p style="color:#4A4441">%s</p>
+                  <p style="margin:24px 0"><a href="%s" style="background:#111827;color:#fff;text-decoration:none;padding:14px 22px;border-radius:12px;font-weight:600">Abrir página de assinatura</a></p>
+                  <p style="color:#7C7570;font-size:13px">Se o botão não abrir, copie este endereço: %s</p>
+                </div>
+                """.formatted(HtmlUtils.htmlEscape(title), HtmlUtils.htmlEscape(message), safeLink, safeLink));
     }
 
     /** Em dev (sem Resend) o código não sai por e-mail — deixa no log pra dar pra testar. */

@@ -96,6 +96,9 @@ public class WebhookController {
             case "authorized" -> {
                 business.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
                 business.setSubscriptionGraceEndsAt(null);
+                // Assinatura ativa de novo: libera os avisos de cobrança para o próximo ciclo.
+                business.setTrialReminderSentAt(null);
+                business.setExpiredNoticeSentAt(null);
                 business.setActive(true);
                 business.setCurrentPeriodEnd(OffsetDateTime.now().plusMonths(1));
             }

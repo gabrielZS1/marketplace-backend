@@ -76,7 +76,11 @@ public class SubscriptionService {
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 400) {
-                throw new RuntimeException("Erro ao criar assinatura no Mercado Pago: " + response.body());
+                // O corpo da resposta do Mercado Pago só vai para o log — nunca para o usuário.
+                log.error("Mercado Pago recusou criar a assinatura do negócio {}: HTTP {} {}",
+                        business.getId(), response.statusCode(), response.body());
+                throw new RuntimeException(
+                        "Não foi possível iniciar a assinatura agora. Tente novamente em instantes.");
             }
 
             JsonNode node = objectMapper.readTree(response.body());
@@ -147,7 +151,8 @@ public class SubscriptionService {
                     .build();
             preapprovalClient.update(preapprovalId, cancelRequest);
         } catch (MPApiException e) {
-            throw new RuntimeException("Erro ao cancelar assinatura no Mercado Pago: " + e.getApiResponse().getContent(), e);
+            log.error("Mercado Pago recusou cancelar a assinatura {}: {}", preapprovalId, e.getApiResponse().getContent());
+            throw new RuntimeException("Não foi possível cancelar a assinatura agora. Tente novamente em instantes.", e);
         } catch (MPException e) {
             throw new RuntimeException("Erro ao comunicar com o Mercado Pago", e);
         }

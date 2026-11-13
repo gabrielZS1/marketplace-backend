@@ -136,6 +136,12 @@ public class Business {
     @Column(name = "mp_preapproval_id", length = 255)
     private String mpPreapprovalId;
 
+    @Column(name = "trial_reminder_sent_at")
+    private OffsetDateTime trialReminderSentAt;
+
+    @Column(name = "expired_notice_sent_at")
+    private OffsetDateTime expiredNoticeSentAt;
+
     public UUID getId() { return id; }
     public User getOwner() { return owner; }
     public void setOwner(User owner) { this.owner = owner; }
@@ -197,6 +203,10 @@ public class Business {
     public void setOnboardingCompleted(Boolean onboardingCompleted) { this.onboardingCompleted = onboardingCompleted; }
     public OffsetDateTime getSubscriptionGraceEndsAt() { return subscriptionGraceEndsAt; }
     public void setSubscriptionGraceEndsAt(OffsetDateTime subscriptionGraceEndsAt) { this.subscriptionGraceEndsAt = subscriptionGraceEndsAt; }
+    public OffsetDateTime getTrialReminderSentAt() { return trialReminderSentAt; }
+    public void setTrialReminderSentAt(OffsetDateTime trialReminderSentAt) { this.trialReminderSentAt = trialReminderSentAt; }
+    public OffsetDateTime getExpiredNoticeSentAt() { return expiredNoticeSentAt; }
+    public void setExpiredNoticeSentAt(OffsetDateTime expiredNoticeSentAt) { this.expiredNoticeSentAt = expiredNoticeSentAt; }
     public String getMpPreapprovalId() { return mpPreapprovalId; }
     public void setMpPreapprovalId(String mpPreapprovalId) { this.mpPreapprovalId = mpPreapprovalId; }
     public String getExpoPushToken() { return expoPushToken; }

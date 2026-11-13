@@ -13,11 +13,14 @@ public class ReviewResponseDTO {
     private String employeeName;
     private String serviceName;
     private String photoUrl;
+    /** Autor da avaliação — o app usa para "bloquear usuário". */
+    private UUID clientId;
 
     public ReviewResponseDTO(UUID id, String clientName, Integer rating,
                              String comment, OffsetDateTime createdAt,
                              String employeeName, String serviceName,
-                             String photoUrl) {
+                             String photoUrl, UUID clientId) {
+        this.clientId = clientId;
         this.id = id;
         this.clientName = clientName;
         this.rating = rating;
@@ -36,4 +39,5 @@ public class ReviewResponseDTO {
     public String getEmployeeName() { return employeeName; }
     public String getServiceName()  { return serviceName; }
     public String getPhotoUrl()     { return photoUrl; }
+    public UUID getClientId()       { return clientId; }
 }

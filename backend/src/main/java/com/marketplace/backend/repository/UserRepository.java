@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
     Optional<User> findByGoogleId(String googleId);
+
+    /** Conta existe e está ativa (não excluída/desativada). Usado a cada requisição autenticada. */
+    boolean existsByIdAndActiveTrue(java.util.UUID id);
 }

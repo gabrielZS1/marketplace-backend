@@ -88,6 +88,7 @@ public class SecurityConfig {
 
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/legal/**").permitAll()
+                        .requestMatchers("/assinar", "/assinar/**").permitAll()
 
 
                         /* ================================

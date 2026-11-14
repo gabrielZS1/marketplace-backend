@@ -16,6 +16,8 @@ public interface BusinessRepository extends JpaRepository<Business, UUID> {
 
     List<Business> findByOwnerId(UUID ownerId);
 
+    List<Business> findByModerationSuspendedTrueOrderByUpdatedAtDesc();
+
     /** Empresa "principal" do dono: a de onboarding concluído mais recente, senão a mais antiga. */
     Optional<Business> findFirstByOwnerIdOrderByOnboardingCompletedDescCreatedAtAsc(UUID ownerId);
 

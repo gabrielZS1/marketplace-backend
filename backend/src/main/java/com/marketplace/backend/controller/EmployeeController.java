@@ -153,6 +153,9 @@ public class EmployeeController {
                 UserRole.EMPLOYEE
         );
 
+        // A senha foi criada pelo dono: o funcionário troca no primeiro acesso.
+        user.setMustChangePassword(true);
+
         User savedUser =
                 userRepository.save(user);
 
@@ -432,6 +435,7 @@ public class EmployeeController {
 
         User user = employee.getUser();
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setMustChangePassword(true);   // senha definida pelo dono → troca no próximo acesso
         userRepository.save(user);
 
         return ResponseEntity.ok(java.util.Map.of("password", newPassword));

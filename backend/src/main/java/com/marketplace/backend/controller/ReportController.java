@@ -41,6 +41,9 @@ public class ReportController {
     private final UserRepository userRepository;
     private final EmailService emailService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.base-url:}")
+    private String baseUrl;
+
     public ReportController(ReportRepository reportRepository,
                             ReviewRepository reviewRepository,
                             BusinessRepository businessRepository,
@@ -112,11 +115,18 @@ public class ReportController {
                             + "<li><b>Motivo:</b> " + reason + "</li>"
                             + "<li><b>Detalhes:</b> " + (details == null ? "—" : HtmlUtils.htmlEscape(details)) + "</li>"
                             + "<li><b>Denúncia:</b> " + report.getId() + "</li></ul>"
-                            + "<p>Analise e tome providências em até 24 horas.</p>");
+                            + "<p>Analise e tome providências em até 24 horas: "
+                            + "<a href=\"" + HtmlUtils.htmlEscape(moderationUrl()) + "\">abrir a moderação</a>.</p>");
         } catch (RuntimeException e) {
             log.error("Falha ao avisar o administrador sobre a denúncia {}", report.getId(), e);
         }
 
         return ResponseEntity.noContent().build();
+    }
+
+    private String moderationUrl() {
+        String base = baseUrl == null ? "" : baseUrl.trim();
+        while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+        return base + "/moderacao";
     }
 }

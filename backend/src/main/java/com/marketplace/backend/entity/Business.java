@@ -142,6 +142,10 @@ public class Business {
     @Column(name = "expired_notice_sent_at")
     private OffsetDateTime expiredNoticeSentAt;
 
+    /** Suspenso pela moderação (denúncia). Enquanto true, não volta a ficar ativo sozinho. */
+    @Column(name = "moderation_suspended", nullable = false)
+    private Boolean moderationSuspended = false;
+
     public UUID getId() { return id; }
     public User getOwner() { return owner; }
     public void setOwner(User owner) { this.owner = owner; }
@@ -203,6 +207,8 @@ public class Business {
     public void setOnboardingCompleted(Boolean onboardingCompleted) { this.onboardingCompleted = onboardingCompleted; }
     public OffsetDateTime getSubscriptionGraceEndsAt() { return subscriptionGraceEndsAt; }
     public void setSubscriptionGraceEndsAt(OffsetDateTime subscriptionGraceEndsAt) { this.subscriptionGraceEndsAt = subscriptionGraceEndsAt; }
+    public Boolean getModerationSuspended() { return moderationSuspended; }
+    public void setModerationSuspended(Boolean moderationSuspended) { this.moderationSuspended = moderationSuspended; }
     public OffsetDateTime getTrialReminderSentAt() { return trialReminderSentAt; }
     public void setTrialReminderSentAt(OffsetDateTime trialReminderSentAt) { this.trialReminderSentAt = trialReminderSentAt; }
     public OffsetDateTime getExpiredNoticeSentAt() { return expiredNoticeSentAt; }

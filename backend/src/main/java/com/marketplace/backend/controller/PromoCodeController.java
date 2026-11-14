@@ -3,21 +3,17 @@ package com.marketplace.backend.controller;
 import com.marketplace.backend.dto.GeneratePromoCodesRequestDTO;
 import com.marketplace.backend.dto.PromoCodeResponseDTO;
 import com.marketplace.backend.entity.PromoCode;
-import com.marketplace.backend.entity.User;
 import com.marketplace.backend.repository.PromoCodeRepository;
-import com.marketplace.backend.repository.UserRepository;
+import com.marketplace.backend.service.AdminAccessService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/promo-codes")
@@ -27,14 +23,11 @@ public class PromoCodeController {
     private final SecureRandom random = new SecureRandom();
 
     private final PromoCodeRepository promoCodeRepository;
-    private final UserRepository userRepository;
+    private final AdminAccessService adminAccessService;
 
-    @Value("${app.admin-email}")
-    private String adminEmail;
-
-    public PromoCodeController(PromoCodeRepository promoCodeRepository, UserRepository userRepository) {
+    public PromoCodeController(PromoCodeRepository promoCodeRepository, AdminAccessService adminAccessService) {
         this.promoCodeRepository = promoCodeRepository;
-        this.userRepository = userRepository;
+        this.adminAccessService = adminAccessService;
     }
 
     /**
@@ -105,22 +98,8 @@ public class PromoCodeController {
         return code;
     }
 
-    // Valor padrão do application.properties quando ADMIN_EMAIL não está definido.
-    private static final String DEFAULT_ADMIN_EMAIL = "admin@example.com";
-
     private void checkIsAdmin() {
-        // Sem ADMIN_EMAIL de verdade, qualquer pessoa poderia criar uma conta com o e-mail
-        // padrão e passar a gerar códigos promocionais (testes grátis) à vontade.
-        if (adminEmail == null || adminEmail.isBlank() || DEFAULT_ADMIN_EMAIL.equalsIgnoreCase(adminEmail.trim())) {
-            throw new RuntimeException("Acesso negado");
-        }
-
-        UUID userId = UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-
-        if (!adminEmail.equalsIgnoreCase(user.getEmail())) {
-            throw new RuntimeException("Acesso negado");
-        }
+        // Mesma regra da moderação: papel ADMIN, ou o ADMIN_EMAIL (verificado e não-padrão).
+        adminAccessService.requireAdmin();
     }
 }

@@ -89,6 +89,8 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/legal/**").permitAll()
                         .requestMatchers("/assinar", "/assinar/**").permitAll()
+                        // Só a página: a API /api/admin/** exige login e checa administrador.
+                        .requestMatchers("/moderacao", "/moderacao/**").permitAll()
 
 
                         /* ================================

@@ -27,4 +27,9 @@ public class AuthResponseDTO {
     public String getRole() { return role; }
     public String getAddress() { return address; }
     public boolean isEmailVerified() { return emailVerified; }
+
+    /** true = entrou com senha temporária (criada pelo dono) e precisa trocá-la antes de usar o app. */
+    private boolean mustChangePassword;
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public AuthResponseDTO withMustChangePassword(boolean value) { this.mustChangePassword = value; return this; }
 }

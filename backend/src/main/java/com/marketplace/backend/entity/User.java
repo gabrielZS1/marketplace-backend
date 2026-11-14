@@ -58,6 +58,10 @@ public class User {
     @Column(nullable = false)
     private Boolean active = true;
 
+    /** Senha temporária (criada pelo dono): precisa trocar antes de usar o app. */
+    @Column(name = "must_change_password", nullable = false)
+    private Boolean mustChangePassword = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -94,6 +98,8 @@ public class User {
     public void setRole(UserRole role) { this.role = role; }
     public String getPhotoUrl() { return photoUrl; }
     public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
+    public Boolean getMustChangePassword() { return mustChangePassword; }
+    public void setMustChangePassword(Boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
     public Boolean getActive() { return active; }
     public void setActive(Boolean active) { this.active = active; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

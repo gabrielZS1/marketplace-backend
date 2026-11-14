@@ -261,7 +261,9 @@ public class AppointmentController {
         pushNotificationService.sendAppointmentCreated(
                 business.getExpoPushToken(),
                 client.getName(),
-                service.getName()
+                service.getName(),
+                saved.getId(),
+                saved.getStartsAt()
         );
 
         return ResponseEntity.ok(
@@ -357,7 +359,8 @@ public class AppointmentController {
         pushNotificationService.sendAppointmentStatusChanged(
                 appointment.getClient().getExpoPushToken(),
                 appointment.getBusiness().getName(),
-                newStatus.name()
+                newStatus.name(),
+                appointment.getId()
         );
 
         return ResponseEntity.ok(

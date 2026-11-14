@@ -32,4 +32,8 @@ public class UserResponseDTO {
     public String getAddress() { return address; }
     public String getPhotoUrl() { return photoUrl; }
     public boolean isEmailVerified() { return emailVerified; }
+
+    private boolean mustChangePassword;
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public UserResponseDTO withMustChangePassword(boolean value) { this.mustChangePassword = value; return this; }
 }

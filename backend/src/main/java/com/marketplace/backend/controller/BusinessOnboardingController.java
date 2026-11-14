@@ -364,7 +364,7 @@ public class BusinessOnboardingController {
          */
 
         business.setOnboardingCompleted(true);
-        business.setActive(true);
+        business.setActive(!Boolean.TRUE.equals(business.getModerationSuspended()));
 
         // O período de teste conta a partir da criação da conta, não do fim do onboarding.
         OffsetDateTime trialAnchor = business.getCreatedAt() != null

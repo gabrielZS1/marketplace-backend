@@ -200,7 +200,7 @@ public class AuthController {
         return ResponseEntity.ok(new AuthResponseDTO(
                 newAccessToken, newRefreshToken, user.getName(), user.getEmail(),
                 user.getRole().name(), user.getAddress(), Boolean.TRUE.equals(user.getEmailVerified())
-        ));
+        ).withMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword())));
     }
 
     @PostMapping("/logout")
@@ -220,7 +220,7 @@ public class AuthController {
                 user.getId(), user.getName(), user.getEmail(), user.getPhone(),
                 user.getRole().name(), user.getAddress(), user.getPhotoUrl(),
                 Boolean.TRUE.equals(user.getEmailVerified())
-        ));
+        ).withMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword())));
     }
 
     @PostMapping("/delete-account")
@@ -246,8 +246,13 @@ public class AuthController {
                 || !passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new RuntimeException("Senha atual incorreta");
         }
+        if (Boolean.TRUE.equals(user.getMustChangePassword())
+                && passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Escolha uma senha diferente da temporária.");
+        }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setMustChangePassword(false);
         userRepository.save(user);
         return ResponseEntity.noContent().build();
     }
@@ -274,6 +279,7 @@ public class AuthController {
         oneTimeCodeService.consume(user, OneTimeCodePurpose.PASSWORD_RESET, request.getCode());
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setMustChangePassword(false);   // a pessoa escolheu a senha ela mesma
         userRepository.save(user);
 
         // Troca de senha desloga todos os dispositivos.
@@ -323,7 +329,7 @@ public class AuthController {
         return new AuthResponseDTO(
                 accessToken, refreshToken, user.getName(), user.getEmail(),
                 user.getRole().name(), user.getAddress(), Boolean.TRUE.equals(user.getEmailVerified())
-        );
+        ).withMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
     }
 
     private User currentUser() {

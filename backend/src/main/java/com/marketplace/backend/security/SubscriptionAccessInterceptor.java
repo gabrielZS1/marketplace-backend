@@ -114,6 +114,7 @@ public class SubscriptionAccessInterceptor implements HandlerInterceptor {
 
         if (path.startsWith("/api/auth/")) return true;
         if (path.startsWith("/uploads/")) return true;
+        if (path.startsWith("/api/admin/")) return true;   // ferramentas internas (checam admin por conta própria)
 
         if (path.equals("/api/businesses/me") && method.equals("GET")) return true;
         if (path.equals("/api/businesses/me/push-token") && method.equals("PATCH")) return true;

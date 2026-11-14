@@ -37,6 +37,8 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addViewController("/legal/privacidade").setViewName("forward:/legal/privacidade.html");
         // Página web de assinatura (a cobrança não acontece dentro do app das lojas).
         registry.addViewController("/assinar").setViewName("forward:/assinar/index.html");
+        // Ferramenta interna de moderação de denúncias (só administrador consegue usar).
+        registry.addViewController("/moderacao").setViewName("forward:/moderacao/index.html");
         // URL pública de exclusão de conta (exigida pela Google Play).
         registry.addViewController("/legal/exclusao-de-conta").setViewName("forward:/legal/exclusao-de-conta.html");
         registry.addViewController("/legal").setViewName("forward:/legal/termos.html");

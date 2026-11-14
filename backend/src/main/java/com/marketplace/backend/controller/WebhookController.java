@@ -99,7 +99,8 @@ public class WebhookController {
                 // Assinatura ativa de novo: libera os avisos de cobrança para o próximo ciclo.
                 business.setTrialReminderSentAt(null);
                 business.setExpiredNoticeSentAt(null);
-                business.setActive(true);
+                // Suspenso pela moderação continua fora do ar mesmo com o pagamento em dia.
+                business.setActive(!Boolean.TRUE.equals(business.getModerationSuspended()));
                 business.setCurrentPeriodEnd(OffsetDateTime.now().plusMonths(1));
             }
             case "paused" -> {

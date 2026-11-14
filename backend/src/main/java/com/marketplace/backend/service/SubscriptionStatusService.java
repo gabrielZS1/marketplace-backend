@@ -87,7 +87,9 @@ public class SubscriptionStatusService {
                 business.getOnboardingCompleted(),
                 effective,
                 business.getActive(),
-                blockReason(effective),
+                Boolean.TRUE.equals(business.getModerationSuspended())
+                        ? "MODERATION_SUSPENDED"
+                        : blockReason(effective),
                 business.getTrialEndsAt(),
                 business.getSubscriptionGraceEndsAt(),
                 business.getCurrentPeriodEnd(),

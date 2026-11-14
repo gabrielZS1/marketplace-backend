@@ -17,11 +17,19 @@ public class PushNotificationService {
     // cria um novo agendamento
     // =========================================================
 
-    public void sendAppointmentCreated(String expoPushToken, String clientName, String serviceName) {
+    public void sendAppointmentCreated(String expoPushToken, String clientName, String serviceName,
+                                       java.util.UUID appointmentId, java.time.OffsetDateTime startsAt) {
 
         if (expoPushToken == null || expoPushToken.isBlank()) {
             return;
         }
+
+        // "data" vai junto da notificação: ao tocar, o app do estabelecimento abre a Agenda no dia certo.
+        Map<String, Object> data = Map.of(
+                "type", "APPOINTMENT_CREATED",
+                "appointmentId", String.valueOf(appointmentId),
+                "startsAt", String.valueOf(startsAt)
+        );
 
         Map<String, Object> payload = Map.of(
                 "to", expoPushToken,
@@ -29,7 +37,8 @@ public class PushNotificationService {
                 "title", "Novo agendamento!",
                 "body", clientName + " agendou " + serviceName,
                 "channelId", "agendamentos",
-                "priority", "high"
+                "priority", "high",
+                "data", data
         );
 
         webClient.post()
@@ -47,7 +56,8 @@ public class PushNotificationService {
     // recusa (cancela) o agendamento
     // =========================================================
 
-    public void sendAppointmentStatusChanged(String expoPushToken, String businessName, String status) {
+    public void sendAppointmentStatusChanged(String expoPushToken, String businessName, String status,
+                                             java.util.UUID appointmentId) {
 
         if (expoPushToken == null || expoPushToken.isBlank()) {
             return;
@@ -72,7 +82,13 @@ public class PushNotificationService {
                 "title", title,
                 "body", body,
                 "channelId", "agendamentos",
-                "priority", "high"
+                "priority", "high",
+                // Ao tocar, o app do cliente abre "Agendamentos".
+                "data", Map.of(
+                        "type", "APPOINTMENT_STATUS",
+                        "appointmentId", String.valueOf(appointmentId),
+                        "status", status
+                )
         );
 
         webClient.post()

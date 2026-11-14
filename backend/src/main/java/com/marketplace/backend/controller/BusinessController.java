@@ -238,6 +238,15 @@ public class BusinessController {
                         )
                 );
 
+        // Suspenso pela moderação: some para o público (o dono ainda vê o próprio cadastro).
+        if (Boolean.TRUE.equals(business.getModerationSuspended())) {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            String caller = auth == null ? null : auth.getName();
+            if (caller == null || !caller.equals(business.getOwner().getId().toString())) {
+                throw new RuntimeException("Empresa não encontrada");
+            }
+        }
+
         return ResponseEntity.ok(toDetailDTO(business));
     }
 
